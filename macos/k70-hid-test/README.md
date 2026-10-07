@@ -1,5 +1,9 @@
 # K70HIDTest
 
+> **Historical development tool / 历史开发工具**（2026-09）。Not needed to build or use Traiectus —
+> kept for reference. The keyboard handling that actually shipped lives in
+> `macos/phase3-tcp/src/KeyboardDetect.swift` and `KeyboardFrameRules.swift`.
+
 用于验证 **Mac → USB HID Vendor Interface → CORSAIR K70 RGB PRO MINI → Connection Mode** 这条链路的最小测试工具。
 
 > 本目录目前只完成 **阶段⑤（ReportBuilder）+ 阶段⑥（离线单元测试）**。

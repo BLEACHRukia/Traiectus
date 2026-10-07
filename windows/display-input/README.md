@@ -1,5 +1,10 @@
 # 给 Windows 端：显示器输入源切换 + 联动所需的能力
 
+> **Historical handoff document / 历史交接文档**（2026-09-25，Mac 侧 → Windows 侧）。
+> The `DISPLAY Mac/Win` protocol extension proposed in §3.2 was **never implemented**: the shipped
+> design switches the monitor from the Mac side and relies on the monitor's own input auto-detect on
+> the way back (see `docs/ARCHITECTURE.en.md` §6). Shipped code: `windows/phase3-tcp/`.
+
 **来自**：Mac 侧（Deep）　**日期**：2026-09-25
 **目标**：让"按一次键盘 `Fn` 键 = 键盘 + 鼠标 + 显示器一起切换"这套联动能真正跑起来。
 

@@ -3,6 +3,9 @@
 > **历史记录**：本文写于产品名为 MiniKVM 的时期（2026-09-29 正式改名为 **Traiectus**）。
 > 正文保留当时的原名/路径，以免记录失真；当前名称与路径见 `README.md`。
 
+> **Historical Phase 2 document / 历史文档**（2026-09，MiniKVM era）。Event injection as shipped
+> lives in `macos/phase3-tcp/src/`; see `docs/ARCHITECTURE.en.md` §2 for how the mechanism ended up.
+
 
 本阶段只做一件事：**在 Mac 上证明"用 macOS 官方 API 合成鼠标事件"可行**，并搞定「辅助功能」权限。
 

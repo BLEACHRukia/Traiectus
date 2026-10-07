@@ -1,5 +1,10 @@
 # K70 键盘切换 · 第二轮：只读探测（先搞清楚 Windows 上那个 `1BA6` 到底是什么）
 
+> **Historical probe worksheet / 历史探测作业单**（2026-09-25）。The read-only probe was completed;
+> its conclusions are part of the shipped implementation (`windows/phase3-tcp/`, see
+> `PROTOCOL.md` §3 and `docs/ARCHITECTURE.en.md` §3). Kept as a record of how it was verified —
+> do not run it as part of installing Traiectus.
+
 **来自**：Mac 侧（Deep）　**日期**：2026-09-25
 **目标**：确认 Windows 上那个厂商接口的真实身份与它期望的数据包长度，为"纯软件双向切换键盘"做最后一步准备。
 
