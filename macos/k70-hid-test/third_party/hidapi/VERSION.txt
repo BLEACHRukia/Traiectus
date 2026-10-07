@@ -1,0 +1,17 @@
+来源（Source）
+  https://github.com/libusb/hidapi
+  tag        : hidapi-0.15.0（2025-05-18 发布）
+  tag object : dbff4ea89f55a572aeb0c53a7b32ea70853ec260 tag
+
+为什么把源码放进仓库
+  这台 Mac 没有 Homebrew、也没有预装 hidapi，而本工具必须用 hidapi。
+  固定一个发布版本随仓库走，可以复现构建、不受环境变化影响。
+
+本目录只包含 macOS 后端所需的文件：
+  hidapi/hidapi.h          公共 API 头文件
+  mac/hid.c                macOS 后端实现（IOKit）
+  mac/hidapi_darwin.h      macOS 专有 API（独占打开等）
+  LICENSE-bsd.txt          许可证（BSD 3-Clause）
+  LICENSE.txt              许可证说明（hidapi 为 BSD/GPL 双许可）
+
+未修改任何上游文件。

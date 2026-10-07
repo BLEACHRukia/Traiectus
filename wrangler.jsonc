@@ -1,0 +1,13 @@
+// Cloudflare Workers 配置：把 site/ 目录作为静态资源发布
+//   · 官网源码在 site/（index.html 中文、en.html 英文、icon.png、og.png）
+//   · 仓库里其它东西（macos/、windows/、docs/ …）不会被发出去 —— 只发 site/
+//   · 部署：Cloudflare 面板里连这个仓库，构建命令 `npx wrangler deploy`
+//           （或者本地 `npx wrangler deploy`，需要先 `wrangler login`）
+{
+  "name": "du",   // 和 Cloudflare 面板里的项目名保持一致（否则每次部署都会警告 + 自动开 PR）
+  "compatibility_date": "2026-10-05",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page"
+  }
+}

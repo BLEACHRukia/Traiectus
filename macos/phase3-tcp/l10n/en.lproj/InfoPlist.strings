@@ -1,0 +1,3 @@
+/* 系统弹窗里的文案：跟着**系统语言**走（不是 app 内那个语言开关）——
+   这是 macOS 的限制，InfoPlist.strings 只能按系统语言本地化。 */
+"NSLocalNetworkUsageDescription" = "Traiectus talks to your Windows PC over the local network to forward the mouse and keyboard input it captures.";

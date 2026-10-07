@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traiectus 鼠标事件观察页</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px 28px;
+    background: #16181d; color: #e8eaed;
+    font: 15px/1.6 -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .hint { color: #9aa0a6; margin: 0 0 18px; max-width: 760px; }
+  .bar { margin: 0 0 14px; display: flex; align-items: center; gap: 12px; }
+  button {
+    font: 500 13px/1 -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+    padding: 7px 14px; border-radius: 7px; cursor: pointer;
+    color: #e8eaed; background: #2c313a; border: 1px solid #3c424c;
+  }
+  button:hover { background: #363c47; }
+  .copied { color: #7ee787; font-size: 13px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #c9d1d9; }
+  .last {
+    font: 600 30px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 18px 22px; border-radius: 10px; margin-bottom: 14px;
+    background: #1f2229; border: 1px solid #2c313a; min-height: 42px;
+  }
+  .last.idle { color: #6b7280; font-size: 18px; font-weight: 400; }
+  .last b { color: #7ee787; }
+  .counts {
+    font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #9aa0a6; margin-bottom: 14px;
+  }
+  .counts span { margin-right: 20px; white-space: nowrap; }
+  .counts .n { color: #e8eaed; }
+  h2 { font-size: 13px; color: #9aa0a6; font-weight: 600; margin: 20px 0 6px;
+       text-transform: uppercase; letter-spacing: .06em; }
+  ol.log {
+    margin: 0; padding: 12px 16px; list-style: none; border-radius: 10px;
+    background: #101216; border: 1px solid #2c313a;
+    font: 13px/1.8 ui-monospace, SFMono-Regular, Menlo, monospace;
+    max-height: 46vh; overflow-y: auto;
+  }
+  ol.log li { color: #c9d1d9; white-space: pre; }
+  ol.log li .t { color: #6b7280; }
+  ol.log li.mid { color: #7ee787; }
+  ol.log li.wheel { color: #79c0ff; }
+</style>
+</head>
+<body>
+
+<h1>Traiectus 鼠标事件观察页</h1>
+<p class="hint">
+  把光标放在这个页面上，按<b>左键</b>、<b>中键（滚轮按下去）</b>、<b>右键</b>，或者滚动滚轮。<br>
+  下面会显示浏览器<b>实际收到</b>的按键编号和滚轮数值。不需要任何权限、不联网、不写任何文件，关掉即可。<br>
+  用途：既可以用真鼠标按，也可以用 Traiectus 的合成事件按，两边显示的应该完全一样。
+</p>
+
+<div id="last" class="last idle">（还没收到任何事件）</div>
+<div id="counts" class="counts"></div>
+
+<div class="bar">
+  <button id="copy">📋 复制计数与记录</button>
+  <span id="copied" class="copied"></span>
+</div>
+
+<h2>事件记录（新的在最上面）</h2>
+<ol id="log" class="log"></ol>
+
+<script>
+"use strict";
+
+const BUTTONS = {
+  0: "左键",
+  1: "中键",
+  2: "右键",
+  3: "侧键 X1",
+  4: "侧键 X2",
+};
+
+const lastEl   = document.getElementById("last");
+const countsEl = document.getElementById("counts");
+const logEl    = document.getElementById("log");
+
+const counts = { down: {}, up: {}, wheel: { up: 0, down: 0 } };
+
+function stamp() {
+  const d = new Date();
+  const p = (n, w = 2) => String(n).padStart(w, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+
+function describeButton(code) {
+  const name = BUTTONS[code] || `未知按键 button ${code}`;
+  const raw = (code === undefined || code === null) ? "button ?" : `button ${code}`;
+  return { name, raw };
+}
+
+function showLast(html, plain) {
+  lastEl.classList.remove("idle");
+  lastEl.innerHTML = html;
+  lastEl.dataset.plain = plain;
+}
+
+function addLog(text, cls) {
+  const li = document.createElement("li");
+  if (cls) li.className = cls;
+  li.innerHTML = `<span class="t">[${stamp()}]</span> ${text}`;
+  logEl.prepend(li);
+  while (logEl.children.length > 60) logEl.lastChild.remove();
+}
+
+function renderCounts() {
+  const parts = [];
+  for (const code of [0, 1, 2, 3, 4]) {
+    const d = counts.down[code] || 0;
+    const u = counts.up[code] || 0;
+    const name = BUTTONS[code] || `button ${code}`;
+    const mark = (code === 1 && d + u > 0) ? " ✅" : "";
+    parts.push(`<span>${name}：按下 <span class="n">${d}</span> / 抬起 <span class="n">${u}</span>${mark}</span>`);
+  }
+  parts.push(`<span>滚轮：向上 <span class="n">${counts.wheel.up}</span> / 向下 <span class="n">${counts.wheel.down}</span></span>`);
+  countsEl.innerHTML = parts.join("");
+}
+
+function onDown(e) {
+  const b = describeButton(e.button);
+  counts.down[e.button] = (counts.down[e.button] || 0) + 1;
+  renderCounts();
+
+  if (e.button === 1) {
+    // Stop Chrome's middle-click autoscroll from hijacking the page.
+    e.preventDefault();
+  }
+
+  const cls = (e.button === 1) ? "mid" : null;
+  addLog(`${b.name} <b>按下</b>   ${b.raw}   @ (${e.clientX}, ${e.clientY})`, cls);
+  showLast(`${b.name} <b>按下</b> <span style="font-size:16px;color:#9aa0a6">${b.raw}</span>`,
+           `${b.name} 按下 ${b.raw}`);
+}
+
+function onUp(e) {
+  const b = describeButton(e.button);
+  counts.up[e.button] = (counts.up[e.button] || 0) + 1;
+  renderCounts();
+  const cls = (e.button === 1) ? "mid" : null;
+  addLog(`${b.name} 抬起   ${b.raw}   @ (${e.clientX}, ${e.clientY})`, cls);
+}
+
+function onAux() {
+  // Some browsers only report non-primary buttons through auxclick.
+}
+
+function onWheel(e) {
+  const dir = e.deltaY < 0 ? "向上" : (e.deltaY > 0 ? "向下" : "横向/零");
+  if (e.deltaY < 0) counts.wheel.up++;
+  else if (e.deltaY > 0) counts.wheel.down++;
+  renderCounts();
+
+  const dm = ["像素 px", "行 line", "页 page"][e.deltaMode] || `mode ${e.deltaMode}`;
+  addLog(`滚轮${dir}   deltaY=${e.deltaY}  deltaX=${e.deltaX}  单位=${dm}`,
+         "wheel");
+  showLast(`滚轮<b>${dir}</b> <span style="font-size:16px;color:#9aa0a6">deltaY=${e.deltaY} (${dm})</span>`,
+           `滚轮${dir} deltaY=${e.deltaY}`);
+}
+
+document.addEventListener("mousedown", onDown, true);
+document.addEventListener("mouseup", onUp, true);
+document.addEventListener("auxclick", onAux, true);
+document.addEventListener("wheel", onWheel, { passive: true });
+
+// 一键复制：方便把结果贴给别人。file:// 页面里 navigator.clipboard 不一定可用，
+// 所以保留一条 execCommand 的退路。
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  ta.remove();
+  return ok ? Promise.resolve() : Promise.reject(new Error("复制失败"));
+}
+
+document.getElementById("copy").addEventListener("click", () => {
+  const lines = Array.from(logEl.children).map((li) => li.innerText);
+  const text = countsEl.innerText + "\n\n" + lines.join("\n");
+  const status = document.getElementById("copied");
+  copyText(text).then(
+    () => { status.textContent = "已复制到剪贴板"; setTimeout(() => { status.textContent = ""; }, 2500); },
+    () => { status.textContent = "复制失败，请手动选中文字（已允许选择）"; }
+  );
+});
+
+renderCounts();
+</script>
+</body>
+</html>

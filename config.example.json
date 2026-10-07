@@ -1,0 +1,50 @@
+{
+  "_说明": [
+    "把本文件复制到  ~/Library/Application Support/Traiectus/config.json  然后按自己的硬件改。",
+    "文件不存在、写错、或只写一部分都没关系 —— 缺的字段一律用下面的默认值。",
+    "改完重启 Traiectus；启动日志里的 [配置] 那一行会显示实际生效的值。"
+  ],
+
+  "display": {
+    "_说明": "显示器的 DDC/CI 输入源编号。同一台显示器上，HDMI-1 通常是 17、DP-1 通常是 15，但各家不同 —— 用 m1ddc get input 或翻显示器说明书确认。",
+    "macInput": "17",
+    "windowsInput": "15"
+  },
+
+  "keyboard": {
+    "_说明": "监听哪家厂商的键盘，用来判断键盘在 Mac 上还是走了。Corsair = 0x1B1C（十进制 6936）。",
+    "vendorID": "0x1B1C",
+
+    "detect": {
+      "_说明": [
+        "状态帧判定规则：接收器吐出的报文 → 键盘去了哪一侧。",
+        "下面两条是 Corsair K70 Pro Mini 实测值（内置默认就是它们）；换键盘时改这里。",
+        "match 是要比对的字节；mask 决定哪些字节参与比对（00 = 忽略，ff = 必须相等），省略 = 全都比。",
+        "⚠️ 区分方向的那个字节，掩码必须是 ff —— 写成 00 会把方向也忽略掉，两条规则就会命中同一批帧。",
+        "interfaces 只有体检/学习用得到，运行时判定不需要它。"
+      ],
+      "interfaces": [
+        { "vid": "0x1B1C", "usagePage": "0xFF42", "usage": "0x0002", "reportBytes": 65 }
+      ],
+      "rules": [
+        { "match": "00 00 01 36 00 02",
+          "side": "windows", "note": "K70 Pro Mini：键盘去 SLIPSTREAM（去 Windows）" },
+        { "match": "00 00 01 36 00 00",
+          "side": "mac", "note": "K70 Pro Mini：键盘回蓝牙（回 Mac）" }
+      ],
+      "unknownFramePolicy": "log"
+    }
+  },
+
+  "tools": {
+    "_说明": "三个外部工具的位置。留空 = 用 app 内置的（推荐，build.sh 会把它们打进 .app）。只有想用自己编译/自己下载的版本时才需要填绝对路径。",
+    "keywatch": "",
+    "m1ddc": "",
+    "dwc": ""
+  },
+
+  "network": {
+    "_说明": "Windows 那台机器的地址，用来在设置窗口里预填。留空就不预填。",
+    "defaultHost": ""
+  }
+}

@@ -1,0 +1,53 @@
+# macOS
+.DS_Store
+
+# Build output (Windows: build.bat / CMake, macOS: build.sh)
+build/
+Release/
+Debug/
+x64/
+
+# MSVC / MinGW artifacts
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.log
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.vcxproj
+*.vcxproj.filters
+
+# Xcode
+*.app/
+DerivedData/
+xcuserdata/
+
+# Editors
+.vs/
+.idea/
+
+# SwiftPM / Xcode 本地产物
+macos/phase3-tcp/.build/
+macos/phase3-tcp/.swiftpm/
+macos/*.bak-*/
+
+# ---------------------------------------------------------------------------
+# 本机机密 / 公开仓库不该有的东西（开源化 Phase 1）
+# ---------------------------------------------------------------------------
+# 握手口令：写在本机文件里，仓库只留模板
+windows/launcher/config.ini
+windows/launcher/token.txt
+windows/phase3-tcp/token.txt
+# 配对流程（PROTOCOL.md §2.1）自动生成的口令，和 token.txt 同性质
+windows/phase3-tcp/paired.json
+
+# 外部工具的二进制：有源码就现场编，不入库
+macos/kvm-link/kvm-keywatch
+macos/kvm-link/m1ddc/m1ddc
+windows/display-input/dwc_win.zip

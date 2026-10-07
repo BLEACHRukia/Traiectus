@@ -1,0 +1,165 @@
+name: Build & Release
+
+# 什么时候跑：
+#   · 推 tag（v0.1.0 这种）→ 编译两端 + 把产物挂到 Release（官网的「下载」指这里）
+#   · 推 main / 手动触发 → 只编译（当编译检查用），不建 Release
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+# 建 Release / 传产物需要写权限
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows（服务端 + 托盘）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # windows-latest 没预装 g++，用 msys2 装 mingw-w64 的 gcc
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc
+
+      # 编译命令与 windows/phase3-tcp/build-mingw.bat 一字不差
+      - name: 编译 Traiectus-Server.exe
+        shell: msys2 {0}
+        run: |
+          cd windows/phase3-tcp
+          mkdir -p build
+          g++ -std=c++17 -O2 -Wall -Wextra -municode -mconsole \
+             -DUNICODE -D_UNICODE -D__USE_MINGW_ANSI_STDIO=1 -static -static-libgcc -static-libstdc++ \
+             -o build/Traiectus-Server.exe src/main.cpp \
+             -luser32 -lgdi32 -lws2_32 -lsetupapi -lhid -lbcrypt -liphlpapi
+
+      # 与 windows/launcher/build-launcher.bat 一致
+      # （-static 必须保留，否则拷到别的机器会缺 libstdc++-6.dll）
+      - name: 编译 Traiectus.exe（托盘）
+        shell: msys2 {0}
+        run: |
+          cd windows/launcher
+          g++ -std=c++17 -O2 -Wall -Wextra -municode -mwindows \
+             -DUNICODE -D_UNICODE -static -static-libgcc -static-libstdc++ \
+             -o Traiectus.exe Traiectus.cpp \
+             -lshell32 -lws2_32 -lgdi32 -luser32 -liphlpapi
+
+      - name: 打包
+        shell: pwsh
+        run: |
+          $out = "dist/Traiectus-Windows"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Copy-Item windows/phase3-tcp/build/Traiectus-Server.exe $out/
+          Copy-Item windows/launcher/Traiectus.exe                  $out/
+          Copy-Item windows/launcher/config.example.ini             $out/
+          Copy-Item windows/launcher/config.example.en.ini          $out/
+          Copy-Item "windows/launcher/安装 Traiectus.bat"            $out/
+          Copy-Item "windows/launcher/卸载 Traiectus.bat"            $out/
+          Copy-Item windows/control-channel/Traiectus-firewall.ps1  $out/
+          Copy-Item "windows/control-channel/Traiectus-防火墙放行.bat" $out/
+          $note = @(
+            "Traiectus —— Windows 侧",
+            "",
+            "1) 双击 Traiectus.exe → 托盘出现圆点（灰 = 已停止，绿 = 运行中）。",
+            "   第一次运行如果弹出防火墙询问，选「允许」（专用网络）。",
+            "2) 第一次有 Mac 连过来时，会弹一个确认框 → 点「允许」。这就是配对，没有口令要填。",
+            "3) 鼠标是哪只不用配：服务端会自动识别你正在用的那只。",
+            "4) 不用了 → 右键托盘圆点 → 退出（服务端、看门狗、光标锁定一起清掉）。",
+            "",
+            "如果提示「Windows 已保护你的电脑」（SmartScreen）：点「更多信息」→「仍要运行」。",
+            "这是未签名程序的正常提示。",
+            "",
+            "用法与配置文件说明见仓库 README.md；协议见 PROTOCOL.md。"
+          )
+          $note | Set-Content -Encoding UTF8 "$out/使用说明.txt"
+          Compress-Archive -Path $out -DestinationPath dist/Traiectus-Windows.zip -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Traiectus-Windows
+          path: dist/Traiectus-Windows.zip
+
+      - name: 挂到 Release（仅 tag）
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$env:GITHUB_REF_NAME" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
+          }
+          gh release upload "$env:GITHUB_REF_NAME" dist/Traiectus-Windows.zip --clobber
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "上传失败 —— 删掉旧 Release 重新建一个（tag 会被重建）"
+            gh release delete "$env:GITHUB_REF_NAME" --yes
+            gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
+            gh release upload "$env:GITHUB_REF_NAME" dist/Traiectus-Windows.zip --clobber
+          }
+
+  macos:
+    name: macOS（客户端 app）
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 编译 kvm-keywatch（键盘归属监听）
+        run: cd macos/kvm-link && ./build.sh
+
+      - name: 编译 m1ddc（显示器输入源切换）
+        run: cd macos/kvm-link/m1ddc && make
+
+      # build.sh 会把上面两个工具打进 .app；找不到自签名证书时自动退回 ad-hoc 签名；
+      # 图标同理（actool 不可用时回退到仓库里预生成的 AppIcon.icns）
+      - name: 编译 Traiectus.app
+        run: cd macos/phase3-tcp && ./build.sh
+
+      - name: 打包（含「首次打开」说明）
+        run: |
+          mkdir -p dist
+          cp -R macos/phase3-tcp/build/Traiectus.app dist/
+          cp config.example.json dist/ 2>/dev/null || true
+          cat > "dist/首次打开请先看这个.txt" <<'EOF'
+          Traiectus —— macOS 侧
+
+          1) 把 Traiectus.app 拖进「应用程序」（或任意位置）
+          2) 第一次打开：右键点它 →「打开」→ 再点一次「打开」
+             （这个包没有 Apple 开发者签名，双击会被 Gatekeeper 拦，属于正常现象。
+               若提示「已损坏」，先在终端执行：
+                 xattr -dr com.apple.quarantine /Applications/Traiectus.app
+               再打开。）
+          3) 首次运行要在「系统设置 → 隐私与安全性 → 辅助功能」里给 Traiectus 打勾
+             （注入鼠标事件需要它）；连内网地址时还会问一次「允许访问本地网络」。
+          4) 地址不用填（会自己在局域网里找 Windows），也没有口令 ——
+             第一次连接时 Windows 上弹确认框，点「允许」即完成配对。
+
+          菜单栏出现图标即已运行；设置见「设置」（⌘,）。
+          EOF
+          # ditto 打包：保留 .app 内的符号链接与可执行权限（普通 zip 容易压坏）
+          ditto -c -k --sequesterRsrc --keepParent dist/Traiectus.app dist/Traiectus-macOS.zip
+          (cd dist && zip -q Traiectus-macOS.zip "首次打开请先看这个.txt" config.example.json) || true
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Traiectus-macOS
+          path: dist/Traiectus-macOS.zip
+
+      - name: 挂到 Release（仅 tag）
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
+          if ! gh release upload "$GITHUB_REF_NAME" dist/Traiectus-macOS.zip --clobber; then
+            echo "上传失败 —— 删掉旧 Release 重新建一个"
+            gh release delete "$GITHUB_REF_NAME" --yes
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
+            gh release upload "$GITHUB_REF_NAME" dist/Traiectus-macOS.zip --clobber
+          fi

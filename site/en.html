@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Traiectus · one keyboard, two computers</title>
+<meta name="description" content="A Windows PC for gaming, a Mac for everything else, one monitor, one keyboard, one mouse. Press once and everything follows.">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="alternate" hreflang="zh-CN" href="https://traiectus.cn/">
+<link rel="alternate" hreflang="en" href="https://traiectus.cn/en.html">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Traiectus · one keyboard, two computers">
+<meta property="og:description" content="A Windows PC for gaming, a Mac for everything else. One monitor, one keyboard, one mouse. Press once and everything follows.">
+<meta property="og:url" content="https://traiectus.cn/">
+<meta property="og:image" content="https://traiectus.cn/og.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --fg: #f5f5f5;
+    --fg-dim: #888;
+    --fg-dimmer: #555;
+    --green: #30d158;
+    --line: #1f1f1f;
+    --max: 640px;
+  }
+
+  /* 显式给 html 上底色：否则橡皮筋回弹（首屏往上/页面底部往下拉）时，
+     WebKit 会在画布外露出默认的白，看起来就是上下两条淡色长块 */
+  html { background: var(--bg); }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  /* ① 首屏 */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0 24px;
+  }
+
+  .hero .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--fg-dimmer);
+    margin-bottom: 22px;
+  }
+
+  .hero h1 {
+    font-size: 52px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 48px;
+  }
+
+  .hero .lines {
+    font-size: 19px;
+    line-height: 2;
+    color: var(--fg);
+    margin-bottom: 56px;
+  }
+
+  .hero .lines .dim { color: var(--fg-dim); }
+  .hero .lines .gap { display: block; height: 18px; }
+
+  .diagram {
+    display: block;
+    width: 100%;
+    max-width: 340px;
+    height: auto;
+    margin: 0 auto 48px;
+  }
+
+  .diagram .arc {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+
+  /* 点：实心。活动的一侧是绿色 + 呼吸；另一侧是灰的（和 app 面板一致） */
+  .diagram .dot { fill: #8e8e93; opacity: 0.4; }
+  .diagram .dot.on {
+    fill: var(--green);
+    opacity: 1;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+
+  .diagram .dlabel {
+    font-size: 11px;
+    font-weight: 500;
+    fill: var(--fg-dim);
+    text-anchor: middle;
+  }
+  .diagram .dlabel.on { fill: var(--fg); }
+
+  .actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 12px 28px;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary { background: var(--green); color: #000; font-weight: 500; }
+  .btn-primary:hover { background: #28b84c; }
+
+  .btn-ghost { color: var(--fg-dim); border: 1px solid var(--line); }
+  .btn-ghost:hover { color: var(--fg); border-color: var(--fg-dim); }
+
+  /* 锚点不要被吸顶导航盖住 */
+  section { scroll-margin-top: 60px; }
+
+  /* 隐藏原生滚动条，改用下面那条自绘的（原因：伪元素滚动条没法做淡出动画） */
+  html { scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* 自绘滚动指示条：静止时淡出，滚动时淡入 —— 淡出用 transition，所以不生硬 */
+  .sb {
+    position: fixed; top: 0; right: 3px; bottom: 0; width: 9px;
+    pointer-events: none; z-index: 60;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .sb.on { opacity: 1; }
+  .sb-thumb {
+    position: absolute; right: 2px; width: 5px;
+    border-radius: 3px; background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* 页脚：同色底 + 一根发丝线，不抢戏。
+     行距分三组：品牌+标语挨在一起是一组，链接那行单独一组，版权信息最后一组 ——
+     所以是 4 / 22 / 10，而不是三档差不多的 14 / 20 / 14（那样四行看着一样重）。 */
+  footer { padding: 34px 0 40px; border-top: 1px solid var(--line); text-align: center; }
+  .f-brand { font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+  .f-tag { font-size: 14px; color: var(--fg-dim); margin-bottom: 22px; }
+  .f-links { display: flex; gap: 22px; justify-content: center; margin-bottom: 10px; }
+  .f-links a { font-size: 14px; color: var(--fg-dim); text-decoration: none; }
+  .f-links a:hover { color: var(--fg); }
+  .f-meta { font-size: 13px; color: var(--fg-dimmer); }
+  .f-meta a { color: var(--green); text-decoration: none; }   /* 语言切换：和下载按钮同一个绿 */
+  .f-meta a:hover { text-decoration: underline; }
+
+  /* 「它不会动你的系统」：和「它是什么」一样居中 */
+  .safe { text-align: center; }
+
+  /* 屏幕太矮 / 手机：自动关掉吸附，回到自由滚动（否则内容会被卡住看不全） */
+  /* 界面截图：和页面同一套圆角/边框，暗色底上不刺眼 */
+  .shot { margin: 40px auto 0; text-align: center; }
+  .shot img {
+    width: 100%; max-width: 460px; height: auto;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  section { padding: 64px 0; }
+  #safe { padding-top: 64px; }
+  .safe-line { font-size: 17px; line-height: 2; }
+
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--fg-dim);
+    margin-bottom: 22px;
+  }
+
+  .what { text-align: center; }
+
+  .what p {
+    font-size: 18px;
+    line-height: 1.9;
+    color: var(--fg);
+  }
+  .what p + p { margin-top: 22px; }
+  .what p.soft { color: var(--fg-dim); }
+
+  @media (max-width: 480px) {
+    section { padding: 48px 0; }
+    .what { text-align: center; }
+
+  .what p { font-size: 16px; }
+  }
+
+  .how ol { list-style: none; counter-reset: step; margin-top: 8px; }
+  /* 只作用于外层那七步：里面「权限清单」是普通列表，不能跟着编号/描边（否则会串号） */
+  .how ol > li {
+    counter-increment: step;
+    font-size: 17px;
+    color: var(--fg);
+    padding: 11px 0 11px 44px;
+    position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+  .how ol > li:last-child { border-bottom: none; }
+  .how ol > li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 15px;
+    width: 24px; height: 24px; line-height: 24px; text-align: center;
+    font-size: 12px; color: var(--fg-dimmer);
+    border: 1px solid var(--line); border-radius: 50%;
+  }
+  .how ol > li b { display: block; font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .how ol > li span { font-size: 15px; color: var(--fg-dim); }
+  .how ol > li code { font-family: "SF Mono", Menlo, monospace; font-size: 14px; color: var(--fg); }
+
+  /* 「给它权限」那一步下面的权限清单 */
+  .how .perm { list-style: none; margin-top: 9px; }
+  .how .perm li { font-size: 14px; color: var(--fg-dim); padding: 3px 0; }
+  .how .perm li em { font-style: normal; color: var(--fg); }
+  .how .perm-note { display: block; margin-top: 7px; font-size: 14px; color: var(--fg-dim); }
+  .how .more { margin-top: 22px; font-size: 14px; color: var(--fg-dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .diagram .dot.on { animation: none; }
+  }
+
+  @media (max-width: 480px) {
+    .hero .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--fg-dimmer);
+    margin-bottom: 22px;
+  }
+
+  .hero h1 { font-size: 36px; margin-bottom: 36px; }
+    .hero .lines { font-size: 16px; }
+  }
+</style>
+</head>
+<body id="top">
+
+
+<section class="hero">
+  <h1>Traiectus</h1>
+
+  <div class="lines">
+    A crossing, from one shore to the other<br>
+    From Win to Mac
+    <span class="gap"></span>
+    One monitor, one keyboard, one mouse.<br>
+    Press once, and everything follows.
+  </div>
+
+  <svg class="diagram" viewBox="0 0 320 72" role="img" aria-label="Crossing from Win to Mac: Win is active (green dot), Mac is the other side">
+    <path class="arc" d="M40 32 Q160 24 280 32"/>
+    <circle class="dot on" cx="40" cy="32" r="6"/>
+    <circle class="dot" cx="280" cy="32" r="6"/>
+    <text class="dlabel on" x="40" y="60">Win</text>
+    <text class="dlabel" x="280" y="60">Mac</text>
+  </svg>
+
+  <div class="actions">
+    <a href="https://github.com/BLEACHRukia/Traiectus/releases" class="btn btn-primary">Download</a>
+    <a href="https://github.com/BLEACHRukia/Traiectus#readme" class="btn btn-ghost">Read the docs</a>
+  </div>
+</section>
+
+<div class="screen">
+<section class="what" id="what">
+  <div class="wrap">
+    <h2>What it is</h2>
+    <p>A piece of software you install on both computers.<br>
+       No switcher to buy, no extra cables to run.<br>
+       Both computers share one keyboard, one mouse and one screen.</p>
+    <p>Both stay up and running, exactly as before.<br>
+       Just one LAN connection between them.<br>
+       The keyboard, mouse and screen follow you to the other side.</p>
+    <figure class="shot">
+      <img src="shots/01-general-en.png" alt="Traiectus's settings window on macOS" width="520">
+    </figure>
+  </div>
+</section>
+<section class="safe" id="safe">
+  <div class="wrap">
+    <h2>It doesn't touch your system</h2>
+    <p class="safe-line">Read-only input capture, no drivers. Quit and it’s back as it was.</p>
+
+  </div>
+</section>
+</div>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <h2>How to use</h2>
+    <ol>
+      <li><b>Set it up · Windows</b><span>Unzip it and double-click <code>Traiectus.exe</code> — a green dot appears in the tray</span></li>
+      <li><b>Set it up · Mac</b><span>Drag <code>Traiectus.app</code> to Applications, then right-click → Open</span></li>
+      <li><b>Grant access</b>
+        <ul class="perm">
+          <li><em>Accessibility</em> — required, or forwarded clicks do nothing</li>
+          <li><em>Local Network</em> — asked on the first connection to Windows; click Allow</li>
+        </ul>
+        <span class="perm-note">Auto-start can be turned off under General → Login Items<br>
+          Input Monitoring / Screen Recording / Full Disk Access aren't needed<br>
+          Only if you use the sleep hotkey does it ask for one extra permission, Automation (click Allow when it asks)</span>
+      </li>
+      <li><b>Click Allow</b><span>The first time the Mac connects, a dialog pops up on Windows — click Allow</span></li>
+      <li><b>Teach it your monitor</b><span>Display page → Start learning → switch the monitor input when it asks</span></li>
+      <li><b>Teach it your keyboard</b><span>Keyboard page → Start learning → press your keyboard&rsquo;s switch key each time it asks</span></li>
+      <li><b>Start using it</b><span>Press the switch key and the keyboard, mouse and screen all move over</span></li>
+    </ol>
+  </div>
+</section>
+
+
+
+
+<footer>
+  <div class="wrap">
+    <div class="f-brand">Traiectus</div>
+    <div class="f-tag">A crossing, from one shore to the other</div>
+    <nav class="f-links">
+      <a href="https://github.com/BLEACHRukia/Traiectus">GitHub</a>
+      <a href="https://github.com/BLEACHRukia/Traiectus/releases">Download</a>
+      <a href="https://github.com/BLEACHRukia/Traiectus/issues">Issues</a>
+    </nav>
+    <div class="f-meta">MIT License · v0.1.0 · <a href="/">中文</a></div>
+  </div>
+</footer>
+
+<div class="sb" id="sb"><div class="sb-thumb" id="sbThumb"></div></div>
+
+<script>
+  (function () {
+    var sb = document.getElementById('sb'), thumb = document.getElementById('sbThumb');
+    if (!sb || !thumb) return;
+    var timer;
+
+    function update() {
+      var doc = document.documentElement;
+      var viewH = window.innerHeight;
+      var max = doc.scrollHeight - viewH;
+      var pad = 8, track = viewH - pad * 2;
+      var thumbH = Math.max(36, Math.round(track * viewH / doc.scrollHeight));
+      var progress = max > 0 ? (window.pageYOffset || doc.scrollTop) / max : 0;
+
+      thumb.style.height = thumbH + 'px';
+      thumb.style.top = Math.round(pad + progress * (track - thumbH)) + 'px';
+
+      sb.classList.add('on');                       // 滚动时出现（0.5s 淡入）
+      clearTimeout(timer);
+      timer = setTimeout(function () { sb.classList.remove('on'); }, 800);   // 停手 0.8s 后淡出
+    }
+
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
+</body>
+</html>

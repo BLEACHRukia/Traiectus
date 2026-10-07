@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traiectus —— 一把键盘，两台电脑</title>
+<meta name="description" content="Traiectus 是一个自建的软 KVM：Mac 和 Windows 共用一把键盘、一只鼠标、一台显示器。按键盘上切主机的组合键，鼠标和显示器输入源一起跟着走。无需硬件 KVM，不装驱动。">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Traiectus —— 一把键盘，两台电脑">
+<meta property="og:description" content="按一次键，键盘、鼠标、显示器一起跟着走。自建的软 KVM，Mac + Windows 共用一套外设。">
+<meta property="og:url" content="https://traiectus.cn/">
+<meta property="og:image" content="https://traiectus.cn/og.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="stylesheet" href="style.css">
+<!-- 只有 JS 可用时才启用"滚动淡入"；JS 挂了内容也要能正常显示 -->
+<script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+
+<header class="nav" id="top">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <img src="icon.png" alt="" width="26" height="26">
+      <span>Traiectus</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#how">怎么工作</a>
+      <a href="#requirements">前提</a>
+      <a href="#start">上手</a>
+      <a class="btn small" href="https://github.com/BLEACHRukia/Traiectus/releases">下载</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">自建软 KVM · MIT 开源</p>
+    <h1>一把键盘，<br>两台电脑。</h1>
+    <p class="lede">
+      按一次键盘上的切换键 —— <strong>键盘、鼠标、显示器一起跟着走</strong>。
+      Mac 和 Windows 都原生运行，不用买硬件 KVM，不装驱动、不 hook。
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/BLEACHRukia/Traiectus/releases">
+        下载 <span class="dim">v0.1.0</span>
+      </a>
+      <a class="btn ghost" href="https://github.com/BLEACHRukia/Traiectus">查看源码</a>
+    </div>
+    <p class="cta-note">Windows / macOS 两个 zip · 未签名包，首次打开要「右键 → 打开」</p>
+
+    <!-- 演示位：等录屏素材到位后，把下面的 .stage 换成 <video>/<img> 即可 -->
+    <div class="stage" role="img" aria-label="演示：按下键盘切换键后，显示器画面、鼠标和键盘一起换到另一台电脑">
+      <div class="stage-monitor">
+        <div class="screen screen-mac"><span>Mac</span><em>macOS 桌面</em></div>
+        <div class="screen screen-win"><span>Windows</span><em>Windows 桌面</em></div>
+      </div>
+      <div class="stage-strip">
+        <span class="chip">键盘</span>
+        <span class="chip">鼠标</span>
+        <span class="chip">显示器</span>
+      </div>
+      <div class="stage-key">按一次切换键</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="wrap">
+    <h2>按一次键，四件事一起发生</h2>
+    <div class="grid">
+      <article class="card reveal">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="2.6"/></svg>
+        <h3>一次按键全切</h3>
+        <p>显示器输入源 + 鼠标控制权跟着键盘一起换边。Fn 组合键是键盘固件的事，Traiectus 负责"看见"它走了，然后让其它设备跟上。</p>
+      </article>
+      <article class="card reveal">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M6 3v7a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3v5"/><circle cx="6" cy="3" r="1.6"/><circle cx="18" cy="21" r="1.6"/></svg>
+        <h3>鼠标跨机</h3>
+        <p>鼠标插在 Windows 上，事件经局域网转发到 Mac 注入。<strong>Windows 本地鼠标照常可用</strong> —— 打游戏不受影响。</p>
+      </article>
+      <article class="card reveal">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+        <h3>提前 1.7 秒切屏</h3>
+        <p>Windows 侧只读监听键盘接收器的状态帧，比 Mac 自己发现键盘离开更快把画面切过去。没有这个接口的键盘也照常能用，只是少这点提前量。</p>
+      </article>
+      <article class="card reveal">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+        <h3>睡眠一键交接</h3>
+        <p>在 Mac 上按一个组合键（默认 ⌘1）睡眠，同时把屏幕和鼠标交给 Windows；唤醒后自动切回。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="how">
+  <div class="wrap narrow">
+    <h2>怎么工作</h2>
+    <p class="muted">两端各跑一个小程序，只用一条局域网 TCP 连接（默认 45789）。没有云端、没有账号、没有遥测。</p>
+    <div class="diagram-wrap reveal">
+      <svg class="diagram" viewBox="0 0 760 260" role="img" aria-label="Mac 上的客户端与 Windows 上的服务端通过局域网相连">
+        <rect x="40" y="96" width="190" height="86" rx="14" class="dbox"/>
+        <text x="135" y="130" class="dt1">Mac</text>
+        <text x="135" y="154" class="dt2">Traiectus Client</text>
+
+        <rect x="530" y="96" width="190" height="86" rx="14" class="dbox"/>
+        <text x="625" y="130" class="dt1">Windows</text>
+        <text x="625" y="154" class="dt2">Traiectus Server</text>
+
+        <line x1="230" y1="139" x2="530" y2="139" class="dline"/>
+        <circle cx="380" cy="139" r="4" class="ddot"/>
+        <text x="380" y="122" class="dt2">局域网 · TCP 45789</text>
+
+        <rect x="300" y="20" width="160" height="46" rx="10" class="dbox thin"/>
+        <text x="380" y="49" class="dt2">显示器（DDC/CI）</text>
+        <path d="M300 43 L135 96" class="dline thin"/>
+        <path d="M460 43 L625 96" class="dline thin"/>
+
+        <rect x="300" y="206" width="160" height="46" rx="10" class="dbox thin"/>
+        <text x="380" y="235" class="dt2">键盘 + 鼠标</text>
+        <path d="M135 182 L300 229" class="dline thin"/>
+        <path d="M625 182 L460 229" class="dline thin"/>
+      </svg>
+    </div>
+    <ul class="ticks">
+      <li><b>只读</b>：Windows 侧只捕获 Raw Input，不拦截、不注入、不改系统设置、不装驱动。</li>
+      <li><b>断开即失效</b>：Mouse 模式默认 "Windows 原生"，连不上就什么都不做。</li>
+      <li><b>退出即干净</b>：从托盘退出，服务端、看门狗、光标锁定一起清掉。</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="requirements">
+  <div class="wrap narrow">
+    <h2>先看前提</h2>
+    <p class="muted">不符合这几条的话，它帮不上你 —— 提前说清楚，比装完才发现好。</p>
+    <ul class="req">
+      <li class="reveal"><b>键盘要能自己换主机</b><span>内置 Fn 组合键在"蓝牙主机"和"2.4G / 有线主机"之间切换的键盘。Traiectus 不能命令键盘换主机 —— 它只是看见键盘走了。</span></li>
+      <li class="reveal"><b>显示器支持 DDC/CI</b><span>绝大多数现代显示器都支持，且两台机器接在不同输入口（例如 Mac → HDMI-1，Windows → DP-1）。</span></li>
+      <li class="reveal"><b>两台机器在同一局域网</b><span>有线、Wi-Fi 都行，能互相访问即可。</span></li>
+      <li class="reveal"><b>提前切屏需要键盘有厂商状态帧接口</b><span>实测的 Corsair K70 Pro Mini 有。没有这个接口的键盘一切照常，只是"去 Windows"方向慢约 1.7 秒。</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section alt" id="start">
+  <div class="wrap narrow">
+    <h2>三步用起来</h2>
+    <ol class="steps">
+      <li class="reveal">
+        <b>Windows</b>
+        <p>解压 <code>Traiectus-Windows.zip</code> → 双击 <code>Traiectus.exe</code> → 托盘出现绿点。
+           第一次弹防火墙询问时选「允许」。</p>
+        <a class="btn small" href="https://github.com/BLEACHRukia/Traiectus/releases/download/v0.1.0/Traiectus-Windows.zip">下载 Windows 版</a>
+      </li>
+      <li class="reveal">
+        <b>macOS</b>
+        <p>解压 <code>Traiectus-macOS.zip</code> → 把 <code>Traiectus.app</code> 拖进「应用程序」→
+           <strong>右键 → 打开</strong> → 在「辅助功能」里给它打勾。</p>
+        <a class="btn small" href="https://github.com/BLEACHRukia/Traiectus/releases/download/v0.1.0/Traiectus-macOS.zip">下载 macOS 版</a>
+      </li>
+      <li class="reveal">
+        <b>配对</b>
+        <p>第一次 Mac 连过来时，Windows 上会弹一个确认框 —— 点「允许」。
+           <strong>没有口令要填</strong>，地址也会自己找到。</p>
+      </li>
+    </ol>
+    <p class="muted small">想自己编译？看仓库的 <a href="https://github.com/BLEACHRukia/Traiectus#readme">README</a>
+      与 <a href="https://github.com/BLEACHRukia/Traiectus/blob/main/PROTOCOL.md">PROTOCOL.md</a>。</p>
+  </div>
+</section>
+
+<section class="section" id="faq">
+  <div class="wrap narrow">
+    <h2>常见问题</h2>
+    <details><summary>它和硬件 KVM 的区别？</summary><p>不用多一根线、不用多一个盒子、不用按盒子上的按钮。代价是需要一台常开的电脑做服务端（这里是 Windows），并依赖局域网。</p></details>
+    <details><summary>会被游戏反作弊影响吗？</summary><p>Windows 侧只读捕获输入，不注入、不改内存、不 hook。作者自己的做法是：玩竞技游戏前直接退出 Traiectus，环境最干净。</p></details>
+    <details><summary>Mac 版为什么打不开？</summary><p>因为它没有 Apple 开发者签名（那要 99 美元/年）。第一次「右键 → 打开」即可；若提示「已损坏」，在终端执行 <code>xattr -dr com.apple.quarantine /Applications/Traiectus.app</code> 再打开。</p></details>
+    <details><summary>支持我的键盘吗？</summary><p>只要它能自己换主机就能用。带厂商状态帧接口的（例如 Corsair K70 Pro Mini）有「提前切屏」，别的键盘少这 1.7 秒提前量，功能一样用。</p></details>
+    <details><summary>安全吗？会不会把我的输入发到网上？</summary><p>不。只有一台电脑到另一台电脑的局域网连接，没有云端、没有账号、没有遥测。鼠标只在「控制权在 Mac」时转发。</p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <div class="brand small">
+        <img src="icon.png" alt="" width="20" height="20"><span>Traiectus</span>
+      </div>
+      <nav>
+        <a href="https://github.com/BLEACHRukia/Traiectus">GitHub</a>
+        <a href="https://github.com/BLEACHRukia/Traiectus/releases">Releases</a>
+        <a href="https://github.com/BLEACHRukia/Traiectus/issues">问题反馈</a>
+        <a href="https://github.com/BLEACHRukia/Traiectus/blob/main/PROTOCOL.md">协议</a>
+      </nav>
+    </div>
+    <p class="muted small">MIT 许可 · 当前版本 v0.1.0 · 个人项目：在一台具体的机器组合上做到能用并长期实际使用，
+      过程记录在仓库的 <code>docs/devlog/</code>。</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

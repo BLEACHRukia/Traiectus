@@ -1,0 +1,46 @@
+{
+  "features": [
+    "refractivity"
+  ],
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.08000,0.08000,0.10000,1.00000"
+  },
+  "groups": [
+    {
+      "blur-material": 0.5,
+      "layers": [
+        {
+          "image-name": "layer-01-win.png",
+          "name": "layer-01-win"
+        },
+        {
+          "image-name": "layer-02-divider.png",
+          "name": "layer-02-divider"
+        },
+        {
+          "image-name": "layer-03-mac.png",
+          "name": "layer-03-mac"
+        }
+      ],
+      "refractivity": {
+        "depth": 0,
+        "enabled": true,
+        "strength": 0.5
+      },
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.3
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.45
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}

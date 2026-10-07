@@ -1,0 +1,3 @@
+/* 系统弹窗里的文案：跟着**系统语言**走（不是 app 内那个语言开关）——
+   这是 macOS 的限制，InfoPlist.strings 只能按系统语言本地化。 */
+"NSLocalNetworkUsageDescription" = "Traiectus 需要连接局域网内的 Windows 电脑，才能把捕获的鼠标和键盘输入转发到这台 Mac。";
