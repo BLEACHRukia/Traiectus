@@ -51,6 +51,19 @@ Traiectus just moves your *input devices* and *the monitor's input source* betwe
 | **不用查任何 ID** | 鼠标是哪只由服务端自动识别；键盘是哪把在「设置 → 键盘 → 我的键盘」点一下就能选；显示器输入源编号是"学"出来的。 |
 | **不装驱动、不 hook** | Windows 侧**只读捕获** Raw Input：不拦截、不改系统设置、不装驱动、不用内核扩展。 |
 
+## Requirements（先说清楚，这套东西有前提）
+
+- **键盘必须能在两台机器之间换主机** —— 也就是内置 `Fn` 组合键在"蓝牙主机"和"2.4G / 有线主机"
+  之间切换的键盘。本项目实测的是 **Corsair K70 Pro Mini**（Mac = 蓝牙 BT1，Windows = SLIPSTREAM 2.4G 接收器）。
+  Traiectus **不能命令键盘换主机** —— 那是键盘固件的事；它只是"看见"键盘走了，然后让屏幕和鼠标跟着走。
+  换一把不支持换主机的键盘，"一次按键全切"就不成立。
+- **显示器支持 DDC/CI**（绝大多数现代显示器都支持），且两台机器接在不同输入口上。
+- **两台机器在同一个局域网**里，能互相访问。
+- 实测环境 macOS 14+ / Windows 10-11。Windows 侧 C++（MinGW），Mac 侧 Swift
+  （SwiftUI + CGEvent + Network.framework）。
+- **抢跑（提前切屏）需要键盘有厂商状态帧接口**（实测的 Corsair K70 Pro Mini 有）。
+  换一把没有这个接口的键盘，其它功能照常，只是"去 Windows"方向没有提前量、慢约 1.7 秒。
+
 ## Typical usage (verified on real hardware)
 
 ```text
@@ -72,19 +85,6 @@ Three things that are easy to get wrong (all measured):
 | Mac sleeps → mouse usable on Windows | **The app** (sends `MODE Win` immediately). Without it you wait 4–5 s for the server to notice the client is gone |
 | Keyboard switches host → screen follows | **The app.** The Fn combo doesn't change the HDMI signal, so the monitor can't know |
 | Wake → screen returns to the Mac | **The app.** The monitor won't hop back from DP to HDMI by itself |
-
-## Requirements（先说清楚，这套东西有前提）
-
-- **键盘必须能在两台机器之间换主机** —— 也就是内置 `Fn` 组合键在"蓝牙主机"和"2.4G / 有线主机"
-  之间切换的键盘。本项目实测的是 **Corsair K70 Pro Mini**（Mac = 蓝牙 BT1，Windows = SLIPSTREAM 2.4G 接收器）。
-  Traiectus **不能命令键盘换主机** —— 那是键盘固件的事；它只是"看见"键盘走了，然后让屏幕和鼠标跟着走。
-  换一把不支持换主机的键盘，"一次按键全切"就不成立。
-- **显示器支持 DDC/CI**（绝大多数现代显示器都支持），且两台机器接在不同输入口上。
-- **两台机器在同一个局域网**里，能互相访问。
-- 实测环境 macOS 14+ / Windows 10-11。Windows 侧 C++（MinGW），Mac 侧 Swift
-  （SwiftUI + CGEvent + Network.framework）。
-- **抢跑（提前切屏）需要键盘有厂商状态帧接口**（实测的 Corsair K70 Pro Mini 有）。
-  换一把没有这个接口的键盘，其它功能照常，只是"去 Windows"方向没有提前量、慢约 1.7 秒。
 
 ## Quick start
 
