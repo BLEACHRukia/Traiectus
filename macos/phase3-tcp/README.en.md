@@ -37,7 +37,7 @@ cd macos/phase3-tcp
 ./build.sh
 ```
 
-Output: `build/Traiectus-Client.app`. The script compiles with `swiftc` and signs with a local
+Output: `build/Traiectus.app`. The script compiles with `swiftc` and signs with a local
 self-signed certificate — **rebuilding does not lose the Accessibility grant** (see
 [`../phase2-cgevent/README.md`](../phase2-cgevent/README.md) §9).
 
@@ -77,10 +77,10 @@ meant editing code and rebuilding. They now live in one config file:
 ## 3. Running and granting permissions
 
 ```bash
-open "build/Traiectus-Client.app"
+open "build/Traiectus.app"
 ```
 
-This is a **new app** (bundle id `com.minikvm.client`), so it has to be granted permission separately:
+This is a **new app** (bundle id `com.traeictus.client`), so it has to be granted permission separately:
 
 1. click **"Request permission"** in the window
 2. System Settings → Privacy & Security → **Accessibility** → enable **Traiectus Client**
@@ -103,15 +103,15 @@ client on the Mac alone:
 python3 tools/traiectus-test-server.py --port 45789 --token test123 --demo --duration 30
 
 # terminal 2: let the client connect to it (the -key value pairs in --args are read as temporary prefs)
-open "macos/phase3-tcp/build/Traiectus-Client.app" --args \
-     -minikvm.autostart YES -minikvm.host 127.0.0.1 -minikvm.token test123
+open "macos/phase3-tcp/build/Traiectus.app" --args \
+     -traiectus.autostart YES -traiectus.host 127.0.0.1 -traiectus.token test123
 ```
 
 `--demo` makes the fake server draw a square, click the left button once and scroll once. **If the
 cursor actually moves, the whole "connect → parse → inject" chain works.**
 
 > ⚠️ **You must launch it with `open` (the same as double-clicking); do not run
-> `build/Traiectus-Client.app/Contents/MacOS/TraiectusClient` straight from a terminal.**
+> `build/Traiectus.app/Contents/MacOS/Traiectus` straight from a terminal.**
 >
 > When you run that binary from a terminal, macOS attributes the permission to **the process that
 > launched it** (the terminal), so the app's own `AXIsProcessTrusted()` reports "not trusted" and the
@@ -120,7 +120,7 @@ cursor actually moves, the whole "connect → parse → inject" chain works.**
 >
 > We actually hit this trap and spent a long time on it. So:
 > - to start it from the command line, use `open <app> --args ...` and let launchd start it;
-> - the app also writes its own log to `~/Library/Logs/TraiectusClient.log`, so whoever launched it,
+> - the app also writes its own log to `~/Library/Logs/Traiectus.log`, so whoever launched it,
 >   you can read afterwards what the app itself saw (its permission verdict, for example).
 
 The script has another switch dedicated to verifying failure protection:
@@ -134,7 +134,7 @@ It sends one `DOWN L` and then **disconnects without a release**. The client log
 becomes a drag" failure.
 
 The log appears in three places: the app window, stderr (visible when started from a terminal) and
-`~/Library/Logs/TraiectusClient.log` (reopened past 1 MB).
+`~/Library/Logs/Traiectus.log` (reopened past 1 MB).
 
 ## 5. Design points in the code worth knowing
 
@@ -231,7 +231,7 @@ The log appears in three places: the app window, stderr (visible when started fr
 
 **Why install it this way**: this is the standard shape for a resident menu-bar tool on macOS — the
 app lives in `~/Applications`, is started at login by
-`~/Library/LaunchAgents/com.minikvm.client.plist`, and is normally reached through the **menu-bar
+`~/Library/LaunchAgents/com.traeictus.client.plist`, and is normally reached through the **menu-bar
 icon**. Putting the app or a shortcut on the Desktop is **neither needed nor advisable**: on macOS the
 Desktop is just an ordinary folder, and macOS 26+ renders Desktop aliases through the legacy icon
 path, which easily produces the "same app, two faces" problem (grey on the Desktop, transparent in

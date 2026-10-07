@@ -33,7 +33,7 @@ cd macos/phase3-tcp
 ./build.sh
 ```
 
-产物：`build/Traiectus-Client.app`。脚本用 `swiftc` 编译，并用本机自签名证书签名——**重新编译不会丢失辅助功能授权**（原理见 [`../phase2-cgevent/README.md`](../phase2-cgevent/README.md) 第 9 节）。
+产物：`build/Traiectus.app`。脚本用 `swiftc` 编译，并用本机自签名证书签名——**重新编译不会丢失辅助功能授权**（原理见 [`../phase2-cgevent/README.md`](../phase2-cgevent/README.md) 第 9 节）。
 
 ## 配置：换硬件只改这里（config.json）
 
@@ -67,10 +67,10 @@ cd macos/phase3-tcp
 ## 3. 运行与授权
 
 ```bash
-open "build/Traiectus-Client.app"
+open "build/Traiectus.app"
 ```
 
-这是一个**新的 App**（bundle id `com.minikvm.client`），所以要单独授权一次：
+这是一个**新的 App**（bundle id `com.traeictus.client`），所以要单独授权一次：
 
 1. 点窗口里的 **「请求权限」**
 2. 系统设置 → 隐私与安全性 → **辅助功能** → 打开 **Traiectus Client**
@@ -89,19 +89,19 @@ open "build/Traiectus-Client.app"
 python3 tools/traiectus-test-server.py --port 45789 --token test123 --demo --duration 30
 
 # 终端 2：让客户端自动连上去（--args 里的 -键 值 会作为临时偏好读入）
-open "macos/phase3-tcp/build/Traiectus-Client.app" --args \
-     -minikvm.autostart YES -minikvm.host 127.0.0.1 -minikvm.token test123
+open "macos/phase3-tcp/build/Traiectus.app" --args \
+     -traiectus.autostart YES -traiectus.host 127.0.0.1 -traiectus.token test123
 ```
 
 `--demo` 会让假服务端画一个方形、点一次左键、滚一次滚轮。**光标真的动起来，就说明"连上 → 解析 → 注入"这条链路是通的。**
 
-> ⚠️ **必须用 `open` 启动（等价于双击），不要从终端直接运行 `build/Traiectus-Client.app/Contents/MacOS/TraiectusClient`。**
+> ⚠️ **必须用 `open` 启动（等价于双击），不要从终端直接运行 `build/Traiectus.app/Contents/MacOS/Traiectus`。**
 >
 > 从终端直接跑这个二进制时，macOS 会把"权限主体"算到**启动它的那个进程**（终端）头上，于是程序自己 `AXIsProcessTrusted()` 读到的是"未授权"，注入的 `CGEvent` 被系统**静默丢弃**——而同一个 App 用 `open` 启动时明明是"已授权"、工作正常。
 >
 > 这个坑我们实际踩过一次，排查花了不少时间。所以：
 > - 想从命令行启动，用 `open <app> --args ...`，让它由 launchd 拉起；
-> - 程序会把自己的日志额外写一份到 `~/Library/Logs/TraiectusClient.log`，不管是谁启动的，事后都能读到它自己看到的真实状态（比如权限结论）。
+> - 程序会把自己的日志额外写一份到 `~/Library/Logs/Traiectus.log`，不管是谁启动的，事后都能读到它自己看到的真实状态（比如权限结论）。
 
 脚本另外还有一个专门用来验证故障保护的开关：
 
@@ -111,7 +111,7 @@ python3 tools/traiectus-test-server.py --port 45790 --token test123 --stick-butt
 
 它会发出一次 `DOWN L` 之后**直接断开、不给抬起**。客户端的日志里应当出现 `补发抬起（防止按键卡住）：L` —— 这条保护防止"Mac 上左键卡住、所有点击都变成拖拽"。
 
-日志同时出现在三个地方：App 窗口、stderr（从终端启动时可见）、以及 `~/Library/Logs/TraiectusClient.log`（超过 1 MB 会重开）。
+日志同时出现在三个地方：App 窗口、stderr（从终端启动时可见）、以及 `~/Library/Logs/Traiectus.log`（超过 1 MB 会重开）。
 
 ## 5. 代码里几个值得知道的设计
 
@@ -189,7 +189,7 @@ python3 tools/traiectus-test-server.py --port 45790 --token test123 --stick-butt
 ```
 
 **为什么这样装**：这是 macOS 上"常驻菜单栏工具"的标准姿势 —— app 装在 `~/Applications`，
-登录时由 `~/Library/LaunchAgents/com.minikvm.client.plist` 自动拉起，平时只从**菜单栏图标**
+登录时由 `~/Library/LaunchAgents/com.traeictus.client.plist` 自动拉起，平时只从**菜单栏图标**
 访问。**不需要**（也不建议）在桌面放 app 或快捷方式：桌面在 macOS 里只是普通文件夹，
 而且 macOS 26+ 对桌面上的"别名"会走旧格式图标路径，容易出现"桌面灰、Dock 透明"这种
 同一个 app 两副面孔的问题。
