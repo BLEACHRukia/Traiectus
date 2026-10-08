@@ -268,6 +268,8 @@
     text-wrap: balance;
     line-break: strict;
   }
+  /* 窄屏专用分段：宽屏两段连成一行，窄屏各自成段（.seg 用它压过上面的 display:block） */
+  .how .seg { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {
     .diagram .dot.on { animation: none; }
@@ -296,6 +298,7 @@
     .how ol > li span, .how .perm li, .how .perm-note { line-height: 1.65; }
     .how .perm { margin-top: 8px; }
     .how .perm-note { margin-top: 6px; }
+    .how .seg { display: block; }
   }
 </style>
 </head>
@@ -360,7 +363,7 @@
       <li><b>给它权限 · Mac</b>
         <ul class="perm">
           <li><em>辅助功能</em> —— 必开，否则鼠标点了没反应</li>
-          <li><em>本地网络</em> —— 第一次连 Windows 时弹框，选「允许」</li>
+          <li><em>本地网络</em> —— <span class="seg">第一次连 Windows 时弹框，</span><span class="seg">选「允许」</span></li>
         </ul>
         <span class="perm-note">开机自启可以在「通用 → 登录项」里关掉<br>
           不需要输入监控、屏幕录制、完全磁盘访问<br>
@@ -372,10 +375,10 @@
           <li>不需要管理员，也不装驱动、不改注册表</li>
         </ul>
       </li>
-      <li><b>点一下允许</b><span>Mac 第一次连过来时，Windows 上会弹确认框，点「允许」</span></li>
+      <li><b>点一下允许</b><span><span class="seg">Mac 第一次连过来时，</span><span class="seg">Windows 上会弹确认框，点「允许」</span></span></li>
       <li><b>教它认显示器</b><span class="hang">「显示」页 → 开始学习 → 按提示用显示器按钮切一次</span></li>
       <li><b>教它认键盘</b><span class="hang">「键盘」页 → 开始学习键盘切换 → 按提示用键盘上的切换键各切一次</span></li>
-      <li><b>开始用</b><span>按一下键盘上的切换键，键盘、鼠标、屏幕一起跟过去</span></li>
+      <li><b>开始用</b><span><span class="seg">按一下键盘上的切换键，</span><span class="seg">键盘、鼠标、屏幕一起跟过去</span></span></li>
     </ol>
   </div>
 </section>
