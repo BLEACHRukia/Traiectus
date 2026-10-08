@@ -221,7 +221,7 @@
   }
 
   .how ol { list-style: none; counter-reset: step; margin-top: 8px; }
-  /* 只作用于外层那七步：里面「权限清单」是普通列表，不能跟着编号/描边（否则会串号） */
+  /* 只作用于外层那几步：里面「权限清单」是普通列表，不能跟着编号/描边（否则会串号） */
   .how ol > li {
     counter-increment: step;
     font-size: 17px;
@@ -328,7 +328,7 @@
     <ol>
       <li><b>装上去 · Windows</b><span>解压后双击 <code>Traiectus.exe</code>，托盘出现绿点就成了</span></li>
       <li><b>装上去 · Mac</b><span>把 <code>Traiectus.app</code> 拖进「应用程序」，右键打开</span></li>
-      <li><b>给它权限</b>
+      <li><b>给它权限 · Mac</b>
         <ul class="perm">
           <li><em>辅助功能</em> —— 必开，否则鼠标点了没反应</li>
           <li><em>本地网络</em> —— 第一次连 Windows 时弹框，选「允许」</li>
@@ -336,6 +336,12 @@
         <span class="perm-note">开机自启可以在「通用 → 登录项」里关掉<br>
           不需要输入监控、屏幕录制、完全磁盘访问<br>
           只有用「睡眠热键」时才会多要一个「自动化」权限（弹框时选「允许」）</span>
+      </li>
+      <li><b>给 Windows 放行</b>
+        <ul class="perm">
+          <li>第一次启动时 Windows 会弹防火墙提示 —— 勾「专用网络」→「允许」</li>
+          <li>不需要管理员，也不装驱动、不改注册表</li>
+        </ul>
       </li>
       <li><b>点一下允许</b><span>Mac 第一次连过来时，Windows 上会弹确认框，点「允许」</span></li>
       <li><b>教它认显示器</b><span class="hang">「显示」页 → 开始学习 → 按提示用显示器按钮切一次</span></li>
