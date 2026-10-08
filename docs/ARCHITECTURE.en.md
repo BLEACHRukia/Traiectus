@@ -14,9 +14,16 @@ This document answers "why is each mechanism designed this way". For protocol de
 |---|---|---|
 | **Traiectus Client** | Mac (SwiftUI menu-bar app) | connects to Windows, injects mouse events, keyboard link, sleep hand-off, sleep hotkey |
 | **Traiectus Server** | Windows (C++ / Raw Input) | captures the mouse read-only, forwards according to control mode, pins the Windows cursor while Mac mode is active |
+| **Traiectus Launcher** | Windows (tray entry point `Traiectus.exe`) | the user's only entry point: starts/restarts the server and the watchdog, the three tray status lines, detect mouse, set mouse-switch hotkey, re-pair, switch language, open log folder, quit |
 | **Head-start frame reader** (inside the server since 3b) | Windows (C++, same exe as the mouse forwarding) | watches the keyboard receiver's status frames read-only → UDP tells the Mac to "head-start". **The old PowerShell bridge is retired** (its job moved into the server, so a distribution needs only one exe) |
 | **kvm-keywatch** | Mac (C, IOKit) | watches the keyboard device appear/disappear on the Mac — i.e. "has the keyboard left?" |
 | **m1ddc / dwc** | Mac (external CLIs, bundled with the app) | switch the monitor's input source over DDC/CI |
+| **UI language tables** | Mac: `src/Localization.swift` (159 entries); Windows: `launcher/i18n.h` (113 entries) | Chinese original → English lookups; **UI only, logs stay Chinese** (keeping both ends aligned when debugging matters more) |
+
+**How the UI language takes effect**: on the Mac you switch it in Settings → General → Language and it
+**applies instantly, no restart**; on Windows the priority is `--lang` > `config.ini` `[ui] language` >
+the system UI language (the tray can switch it too, and writes it back to the ini). Both tables fall
+back to the Chinese original when a string has no entry — better Chinese than a blank or a raw key.
 
 **Why the keyboard is detected as "device appeared/disappeared" rather than by reading key values**:
 combos like `Fn+Caps` / `Fn+T` are handled **inside the keyboard firmware**, so the host never sees

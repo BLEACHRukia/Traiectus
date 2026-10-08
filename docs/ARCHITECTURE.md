@@ -11,9 +11,15 @@
 |---|---|---|
 | **Traiectus Client** | Mac（SwiftUI 菜单栏 app） | 连 Windows、注入鼠标事件、键盘联动、睡眠交接、睡眠热键 |
 | **Traiectus Server** | Windows（C++ / Raw Input） | 只读捕获鼠标、按控制权转发、切控制权时锁定 Windows 光标 |
+| **Traiectus Launcher** | Windows（托盘入口 `Traiectus.exe`） | 用户唯一的入口：拉起/重启服务端与看门狗、托盘状态三行、检测鼠标、设置鼠标切换快捷键、重新配对、语言切换、打开日志目录、退出 |
 | **抢跑读帧**（3b 起做在服务端里） | Windows（C++，与鼠标转发同一个 exe） | 只读监听键盘接收器的状态帧 → UDP 通知 Mac"抢跑"。**原 PowerShell 桥接已退役**（职责并入服务端，分发时只需要一个 exe） |
 | **kvm-keywatch** | Mac（C，IOKit） | 监听键盘设备在 Mac 上的出现/消失 —— 判断"键盘走了没有" |
 | **m1ddc / dwc** | Mac（外部 CLI，随 app 打包） | 通过 DDC/CI 切显示器输入源 |
+| **界面语言表** | Mac：`src/Localization.swift`（159 条）；Windows：`launcher/i18n.h`（113 条） | 中文原文 → English 的对照表；**只翻界面，日志保持中文**（排查时两端对得上更重要） |
+
+**界面语言怎么生效**：Mac 在「设置 → 通用 → 语言」里切，**当场生效不重启**；Windows 侧三级优先
+——`--lang` > `config.ini` 的 `[ui] language` > 系统 UI 语言（托盘里也能切，会写回 ini）。
+两份表都是"查不到就回退显示中文原文"，宁可显示中文也不显示空白或 key。
 
 **为什么键盘用"设备出现/消失"判断，而不是读键值**：
 `Fn+Caps` / `Fn+T` 这类组合键是**键盘固件内部**处理的，主机根本收不到这个按键。
