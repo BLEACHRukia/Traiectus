@@ -25,18 +25,18 @@ It is not a virtual machine and not remote desktop. Both computers run normally 
 Traiectus just moves your *input devices* and *the monitor's input source* between them over your LAN.
 
 ```text
-                  ┌─────────────── Screen ─────────────────┐
+                  ┌──────────────── Screen ────────────────┐
                   │                                        │
-           HDMI   │                                        │   DP
+      HDMI        │                                        │  DP
       ┌───────────┘                                        └───────────┐
       │                                                                │
- ┌────┴─────┐         LAN   (TCP 45789)               ┌───────────────┴──┐
- │ Mac mini │◄───────────────────────────────────────►│   Windows PC     │
- │Traiectus │                                        │ Traiectus Server │
- │  Client  │                                        │  + frames        │
- └────▲─────┘                                        └───▲──────────┬───┘
-      │ BT / USB                                         │ 2.4G dongle│ USB
-      └──────────────── Corsair K70 Pro Mini ───────────┘  the mouse ─┘
+ ┌────┴─────┐                                        ┌─────────────────┴┐
+ │Windows PC│◄──────────────────────────────────────►│Mac mini          │
+ │Traiectus │                                        │Traiectus Client  │
+ │Server    │                                        │+ finds the Mac   │
+ └────┬─────┘                                        └─┬────────────────┘
+      │ 2.4G dongle / USB                              │ BT / USB
+      └────── mouse (2.4G) ──────┘                     └─── Corsair K70 Pro Mini ───┘
 ```
 
 ## What it does
