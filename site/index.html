@@ -17,6 +17,16 @@
 <meta property="og:url" content="https://traiectus.cn/">
 <meta property="og:image" content="https://traiectus.cn/og.png">
 <style>
+/* 字标用 Inter（只有拉丁字符走它，中文继续用系统字体）
+   只自托管了 600 字重的拉丁子集，约 24KB。 */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(fonts/inter-600-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
@@ -64,9 +74,9 @@
   }
 
   .hero h1 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 52px;
     font-weight: 600;
-    letter-spacing: -0.02em;
     margin-bottom: 48px;
   }
 
@@ -75,20 +85,16 @@
     line-height: 2;
     color: var(--fg);
     margin-bottom: 56px;
-    /* 明确撑满宽度：否则这行 div 会收缩到"最长一行"的宽度，
-       而下面 hang-p 的负外边距会让它的计算宽度略小于行内容，导致最长那行被迫折行 */
+    /* 明确撑满宽度：否则这行 div 会收缩到"最长一行"的宽度 */
     width: 100%;
+    padding-left: 1.08em;
   }
 
   .hero .lines .dim { color: var(--fg-dim); }
   .hero .lines .gap { display: block; height: 18px; }
-  /* 行末的全角句号带 ~1em 右边距，居中时会显得文字整体偏左；
-     让它悬挂出去（负右外边距），墨迹才是真正居中 */
-  /* 行末全角句号悬挂：
-     目标是**只按文字居中**（句号完全不算进这一行），所以给句号 -1em 外边距，
-     整行的排版宽度 = 文字本身的宽度，句号画在文字右缘外侧（标准的中文标点悬挂）。
-     效果：文字中心 = 容器中心；句号那个点会探出文字右缘约 3px。 */
-  .hang-p { margin-right: -1em; }
+  /* 行末的全角句号，右半格是空的，居中时会把整行墨迹推左。
+     和下面「它是什么」那几节用同一个办法：补 0.67em 左内边距抵消掉。
+     （早先试过「句号悬挂出去」的写法，但那会让整行偏右约 0.2em，和标题对不齐。） */
 
   .diagram {
     display: block;
@@ -174,7 +180,7 @@
      所以是 4 / 22 / 10，而不是三档差不多的 14 / 20 / 14（那样四行看着一样重）。 */
   footer { padding: 34px 0 40px; border-top: 1px solid var(--line); text-align: center; }
   .f-brand { font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
-  .f-tag { font-size: 14px; color: var(--fg-dim); margin-bottom: 22px; }
+  .f-tag { font-size: 14px; color: var(--fg-dim); margin-bottom: 22px; padding-left: 1.08em; }
   .f-links { display: flex; gap: 22px; justify-content: center; margin-bottom: 10px; }
   .f-links a { font-size: 14px; color: var(--fg-dim); text-decoration: none; }
   .f-links a:hover { color: var(--fg); }
@@ -216,12 +222,12 @@
   .what p + p { margin-top: 22px; }
   .what p.soft { color: var(--fg-dim); }
 
-  /* 中文居中行的收尾句号是全角：句号的墨迹只占左边一点，右半格是空的。
-     text-align: center 会把那半格空位也算进居中，于是可见文字整体偏左约 1/3 字
-     （实测：标题中心 729、正文中心 724，差 6px）。这里补 2/3 字的左内边距抵消掉，
-     让"字"看起来真居中 —— 标题和截图本来就在正中，不用动。
+  /* 中文居中行的收尾句号是全角：句号的墨迹只占左边一点，右半格是空的，
+     text-align: center 会把那半格空位也算进居中。
+     目标是**按文字居中**（句号那一点不算），所以补 1.08em 左内边距：
+     实测「渡，从此岸到彼岸」不含句号时的中心，和标题中心正好重合。
      Chrome 目前不支持 hanging-punctuation，所以用内边距而不是悬挂标点。 */
-  .what p, .safe-line { padding-left: 0.67em; }
+  .what p, .safe-line { padding-left: 1.08em; }
 
   @media (max-width: 480px) {
     section { padding: 48px 0; }
@@ -309,11 +315,11 @@
   <h1>Traiectus</h1>
 
   <div class="lines">
-    渡，从此岸到彼岸<span class="hang-p">。</span><br>
-    从 Win 到 Mac<span class="hang-p">。</span>
+    渡，从此岸到彼岸。<br>
+    从 Win 到 Mac。
     <span class="gap"></span>
-    一台显示器、一把键盘、一只鼠标<span class="hang-p">。</span><br>
-    按一下，全都跟着走<span class="hang-p">。</span>
+    一台显示器、一把键盘、一只鼠标。<br>
+    按一下，全都跟着走。
   </div>
 
   <svg class="diagram" viewBox="0 0 320 72" role="img" aria-label="从 Win 渡到 Mac：活动侧在 Win（绿），另一侧是灰点">
@@ -389,7 +395,7 @@
 <footer>
   <div class="wrap">
     <div class="f-brand">Traiectus</div>
-    <div class="f-tag">渡，从此岸到彼岸<span class="hang-p">。</span></div>
+    <div class="f-tag">渡，从此岸到彼岸。</div>
     <nav class="f-links">
       <a href="https://github.com/BLEACHRukia/Traiectus">GitHub</a>
       <a href="https://github.com/BLEACHRukia/Traiectus/releases">下载</a>
