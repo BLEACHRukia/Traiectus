@@ -261,6 +261,13 @@
   .how .perm li em { font-style: normal; color: var(--fg); }
   .how .perm-note { display: block; margin-top: 7px; font-size: 15px; color: var(--fg-dim); }
   .how .more { margin-top: 22px; font-size: 14px; color: var(--fg-dim); }
+  /* 「如何使用」里的说明文字都是 1~3 行的短块：让浏览器把每行长度摊匀，
+     避免出现「一行顶满 + 下一行只剩两个字」；line-break: strict 打开中文标点禁则，
+     行首不会出现 」/。 之类的收尾标点。 */
+  .how ol > li span, .how ol > li .perm li, .how ol > li .perm-note {
+    text-wrap: balance;
+    line-break: strict;
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .diagram .dot.on { animation: none; }
@@ -277,6 +284,18 @@
 
   .hero h1 { font-size: 36px; margin-bottom: 36px; }
     .hero .lines { font-size: 16px; }
+
+    /* 窄屏：序号留白 44 → 31px、圆点 24 → 21px，正文多出约 13px 宽度，
+       少折一行；行距略收紧，读起来更紧凑 */
+    .how ol > li { padding: 13px 0 13px 31px; }
+    .how ol > li::before {
+      width: 21px; height: 21px; line-height: 21px;
+      font-size: 11px; top: 16px;
+    }
+    .how ol > li b { font-size: 16px; margin-bottom: 3px; }
+    .how ol > li span, .how .perm li, .how .perm-note { line-height: 1.65; }
+    .how .perm { margin-top: 8px; }
+    .how .perm-note { margin-top: 6px; }
   }
 </style>
 </head>
