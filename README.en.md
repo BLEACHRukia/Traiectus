@@ -25,19 +25,21 @@ It is not a virtual machine and not remote desktop. Both computers run normally 
 Traiectus just moves your *input devices* and *the monitor's input source* between them over your LAN.
 
 ```text
-                  ┌──────────────── Screen ────────────────┐
-                  │                                        │
-      HDMI        │                                        │  DP
-      ┌───────────┘                                        └───────────┐
-      │                                                                │
- ┌────┴─────┐                                        ┌─────────────────┴┐
- │Windows PC│◄──────────────────────────────────────►│Mac mini          │
- │Traiectus │                                        │Traiectus Client  │
- │Server    │                                        │+ finds the Mac   │
- └────┬─────┘                                        └─┬────────────────┘
-      │ 2.4G dongle / USB                              │ BT / USB
-      └────── mouse (2.4G) ──────┘                     └─── Corsair K70 Pro Mini ───┘
+                      ┌──────────────── Screen ─────────────────┐
+                      │                                         │
+      HDMI            │                                         │ DP
+      ┌───────────────┘                                         └────────────────┐
+      │                                                                          │
+ ┌────┴─────┐                                                  ┌─────────────────┴──┐
+ │Windows PC│◄─── TCP 45789  events / heartbeat / control ────►│Mac mini            │
+ │Traiectus │◄╌╌╌╌╌╌╌╌ UDP 45790  head-start KEY / HB ╌╌╌╌╌╌╌╌►│Traiectus Client    │
+ │Server    │◄╌╌╌╌╌╌╌ UDP 45791  discovery WHO / HERE ╌╌╌╌╌╌╌╌►│discovery / inject  │
+ └────┬─────┘                                                  └─┬──────────────────┘
+      │ 2.4G dongle / USB                                        │ BT / USB
+      └── mouse (2.4G) ──┘                                       └── Corsair K70 Pro Mini ──┘
 ```
+
+Between the two machines, solid lines are TCP (events / heartbeat / control) and dashed lines are the two UDP side channels — 45790 head-start frames, 45791 address discovery. Neither UDP channel takes part in authentication.
 
 ## What it does
 
