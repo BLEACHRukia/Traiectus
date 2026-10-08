@@ -1,6 +1,6 @@
 # Traiectus
 
-**One keyboard, two computers. Press one key — keyboard, mouse and monitor all follow.**
+**One monitor, one keyboard, one mouse. Press once, and everything follows.**
 
 [中文说明 →](README.md)
 
