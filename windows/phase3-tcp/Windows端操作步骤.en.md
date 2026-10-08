@@ -277,7 +277,51 @@ If you installed into `%LOCALAPPDATA%\Traiectus\`, double-click
 
 ---
 
-## Appendix: these behaviours are deliberate, do not "fix" them
+## 11. Report template (optional)
+
+If you want someone else to help you debug, fill this in:
+
+```text
+1. Build
+   - Result: passed / failed
+   - Compiler and version:
+   - Full error output (if it failed):
+   - If you changed code: attach the git diff
+
+2. The `--list` output for your mouse device:
+
+3. Firewall
+   - Dialog choice: Private / Public / not allowed
+   - Or the command you added by hand
+
+4. Integration run
+   - Handshake: passed / failed (paste one log line from each side)
+   - Movement:
+   - Left / right button:
+   - Middle / side button:
+   - Wheel:
+   - Is the local Windows mouse and keyboard completely normal:
+
+5. Failure scenarios
+   - Close the Mac client: does Windows print a disconnect within 3 seconds:
+   - Re-open the Mac client: does it reconnect within 1 second:
+   - Force-kill Traiectus-Server.exe: is the Windows mouse still fine:
+
+6. Anything else / questions:
+```
+
+## 12. Things not to do (keep both sides consistent)
+
+- Do not change the protocol (command names, field meanings, default ports) - talk to the Mac side
+  first; `PROTOCOL.md` is shared by both ends.
+- Do not switch to absolute coordinates, do not add hooks / drivers / `SendInput`, do not add
+  firewall rules on the side.
+- Do not replace Raw Input with another way of reading input (Phase 1 proved this road works and is
+  read-only).
+- Do not widen the scope to make it "nicer": this phase's only goal is to build, integrate and pass
+  the 10 checks in section 8.
+
+## 13. Appendix: these behaviours are deliberate, do not "fix" them
 
 - Movement is sent as relative deltas only. Absolute coordinates would jump when
   the two machines have different resolutions or display scaling.
