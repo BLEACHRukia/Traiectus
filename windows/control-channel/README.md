@@ -8,9 +8,13 @@
 | 规则 | 端口 | 方向 | 要不要 |
 |---|---|---|---|
 | `Traiectus server TCP 45789` | 45789 | 入站 | **要**（Mac 客户端连过来） |
-| `Traiectus control channel UDP 45791` | 45791 | 入站 | 视方案而定 —— 若控制请求走桥接回包（loopback 中继），**入站放行不是必需的** |
+| `Traiectus discovery UDP 45791` | 45791 | 入站 | **要**（Mac 广播 `WHO 1`，服务端单播回 `HERE 1 45789`，见 `PROTOCOL.md` §7.2） |
 
-历史规则名是 `MiniKVM control channel UDP 45791`；改名任务里**删旧建新**即可。
+抢跑那条 **UDP 45790 不需要入站规则**：它是服务端**发出去**的（发到 Mac 的 45790），
+Mac 的回包（`PING`）回到服务端那个 socket 的**临时端口**上，Windows 防火墙按状态放行 ——
+代码里写的也是 `local.sin_port = 0`（临时端口）。
+
+历史规则名是 `MiniKVM control channel UDP 45791`，现在的名字是 `Traiectus discovery UDP 45791`。
 
 ## 2. 一键处理（Windows，管理员）
 
@@ -18,10 +22,12 @@
 Traiectus-防火墙放行.bat        （内部调用 Traiectus-firewall.ps1）
 ```
 
-它做两件事：
+它做三件事（重复运行也安全）：
 
-1. 确保存在 `Traiectus server TCP 45789` 入站放行；
-2. 把旧的 `MiniKVM control channel UDP 45791` 重命名为 `Traiectus control channel UDP 45791`。
+1. 确保存在 `Traiectus server TCP 45789` 入站放行（**按端口**，以后 exe 改名也不会失效）；
+2. 确保存在 `Traiectus discovery UDP 45791` 入站放行 —— 旧名字还在就改名，不在就新建；
+3. 删掉**按程序路径**的旧规则（名字以 `.exe` 结尾那些：`minikvm-server.exe`、`traiectus-server-*.exe` …），
+   它们放行的是"任何端口"，太宽，没必要留。
 
 ## 3. 手动等价命令（管理员 PowerShell）
 
@@ -34,9 +40,14 @@ Get-NetFirewallRule | Where-Object { $_.DisplayName -match 'Traiectus|MiniKVM|mi
 New-NetFirewallRule -DisplayName "Traiectus server TCP 45789" -Direction Inbound -Action Allow `
     -Protocol TCP -LocalPort 45789 -Profile Any | Out-Null
 
-# 旧名重命名（存在才需要）
-Get-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" -ErrorAction SilentlyContinue |
-    Set-NetFirewallRule -NewDisplayName "Traiectus control channel UDP 45791"
+# 地址发现的放行（按端口）：旧名还在就改名，不在就新建
+if (Get-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" -ErrorAction SilentlyContinue) {
+    Set-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" `
+        -NewDisplayName "Traiectus discovery UDP 45791"
+} else {
+    New-NetFirewallRule -DisplayName "Traiectus discovery UDP 45791" -Direction Inbound -Action Allow `
+        -Protocol UDP -LocalPort 45791 -Profile Any | Out-Null
+}
 ```
 
 ## 4. 清理"历史死规则"（可选，管理员）
@@ -59,5 +70,5 @@ Get-NetFirewallRule | Where-Object { $_.DisplayName -match 'minikvm-server|MiniK
 
 ```powershell
 Remove-NetFirewallRule -DisplayName "Traiectus server TCP 45789"
-Remove-NetFirewallRule -DisplayName "Traiectus control channel UDP 45791"
+Remove-NetFirewallRule -DisplayName "Traiectus discovery UDP 45791"
 ```

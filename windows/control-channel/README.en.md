@@ -8,10 +8,13 @@
 | Rule | Port | Direction | Needed? |
 |---|---|---|---|
 | `Traiectus server TCP 45789` | 45789 | inbound | **Yes** (the Mac client connects in) |
-| `Traiectus control channel UDP 45791` | 45791 | inbound | depends on the design — if control requests go through the bridge's return path (a loopback relay), **an inbound allowance is not required** |
+| `Traiectus discovery UDP 45791` | 45791 | inbound | **Yes** (the Mac broadcasts `WHO 1` and the server unicasts `HERE 1 45789` back — `PROTOCOL.md` §7.2) |
 
-The historical rule name was `MiniKVM control channel UDP 45791`; the rename task is "delete the old
-one, create the new one".
+The head-start channel **UDP 45790 needs no inbound rule**: the server *sends* to the Mac's 45790,
+and the Mac's replies (`PING`) come back to the **ephemeral port** of that same socket, which the
+Windows firewall allows by state — the code literally binds `local.sin_port = 0`.
+
+The historical rule name was `MiniKVM control channel UDP 45791`; it is now `Traiectus discovery UDP 45791`.
 
 ## 2. One-click handling (Windows, administrator)
 
@@ -19,10 +22,14 @@ one, create the new one".
 Traiectus-防火墙放行.bat        (calls Traiectus-firewall.ps1 under the hood)
 ```
 
-It does two things:
+It does three things (safe to re-run):
 
-1. makes sure an inbound allowance named `Traiectus server TCP 45789` exists;
-2. renames the old `MiniKVM control channel UDP 45791` to `Traiectus control channel UDP 45791`.
+1. makes sure an inbound allowance named `Traiectus server TCP 45789` exists (**port-scoped**, so it
+   survives renaming the exe later);
+2. makes sure `Traiectus discovery UDP 45791` exists — renaming the old rule if present, otherwise
+   creating it;
+3. removes **program-path-scoped** leftovers (names ending in `.exe`: `minikvm-server.exe`,
+   `traiectus-server-*.exe`, …), which allow *any* port and are needlessly broad.
 
 ## 3. Equivalent manual commands (administrator PowerShell)
 
@@ -35,9 +42,14 @@ Get-NetFirewallRule | Where-Object { $_.DisplayName -match 'Traiectus|MiniKVM|mi
 New-NetFirewallRule -DisplayName "Traiectus server TCP 45789" -Direction Inbound -Action Allow `
     -Protocol TCP -LocalPort 45789 -Profile Any | Out-Null
 
-# rename the old name (only needed if it exists)
-Get-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" -ErrorAction SilentlyContinue |
-    Set-NetFirewallRule -NewDisplayName "Traiectus control channel UDP 45791"
+# the discovery allowance (port-scoped): rename the old name if present, else create it
+if (Get-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" -ErrorAction SilentlyContinue) {
+    Set-NetFirewallRule -DisplayName "MiniKVM control channel UDP 45791" `
+        -NewDisplayName "Traiectus discovery UDP 45791"
+} else {
+    New-NetFirewallRule -DisplayName "Traiectus discovery UDP 45791" -Direction Inbound -Action Allow `
+        -Protocol UDP -LocalPort 45791 -Profile Any | Out-Null
+}
 ```
 
 ## 4. Cleaning up "dead historical rules" (optional, administrator)
@@ -61,5 +73,5 @@ Get-NetFirewallRule | Where-Object { $_.DisplayName -match 'minikvm-server|MiniK
 
 ```powershell
 Remove-NetFirewallRule -DisplayName "Traiectus server TCP 45789"
-Remove-NetFirewallRule -DisplayName "Traiectus control channel UDP 45791"
+Remove-NetFirewallRule -DisplayName "Traiectus discovery UDP 45791"
 ```

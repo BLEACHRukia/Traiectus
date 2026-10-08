@@ -4,7 +4,7 @@ On top of Phase 1 (read-only Raw Input capture, proven on real hardware) this
 phase adds a TCP server: **it forwards the mouse events to the Mac, using the
 protocol.**
 
-The protocol is defined in [`../PROTOCOL.md`](../PROTOCOL.md). The direction is
+The protocol is defined in [`../../PROTOCOL.md`](../../PROTOCOL.md). The direction is
 **the Mac connects to us**: this program is the listening side, default port
 `45789`.
 
@@ -215,7 +215,7 @@ Network thread: one select() handles accept / recv / send / heartbeat
 | Global hotkey | `RegisterHotKey` with a configurable combination, default **`Ctrl+Alt+M`**; `--hotkey <combo>` changes it (`off` = do not register). The tray's "Set mouse-switch hotkey" edits it and writes it back to `config.ini`. On start it prints one machine-readable line: `HOTKEY OK/FAIL/OFF <combo> [code]` (which the tray reads to show ✓ / ✗ taken). Syntax: modifiers joined with `+`, the last part is the main key, at least one modifier is required, the main key is A–Z / 0–9 / F1–F24 |
 | Windows mode (default) | Nothing is forwarded and no lock is applied -> Windows is completely native (this is the gaming state) |
 | Mac mode | Events are forwarded and `ClipCursor` pins the Windows cursor in place (1x1) |
-| Mode notification | `MODE <Win\|Mac>` after the handshake and on every switch (protocol v1.1, see [`../PROTOCOL.md`](../PROTOCOL.md) §3.1) |
+| Mode notification | `MODE <Win\|Mac>` after the handshake and on every switch (protocol v1.1, see [`../../PROTOCOL.md`](../../PROTOCOL.md) §3.1) |
 | Order of switching | Entering Mac: **lock the cursor first, then start forwarding** (the other way round lets the cursor run loose for a moment). Returning to Windows: **release any held buttons -> send `MODE Win` -> stop forwarding -> unlock** |
 | Disconnect / exit | Client disconnect, Ctrl+C, closing the window, being force-killed - all return to Windows mode and release the lock |
 | Force-kill backstop | A separate watchdog process (the same exe in `--watchdog <pid>` mode) unlocks within 200 ms |

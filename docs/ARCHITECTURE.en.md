@@ -18,7 +18,7 @@ This document answers "why is each mechanism designed this way". For protocol de
 | **Head-start frame reader** (inside the server since 3b) | Windows (C++, same exe as the mouse forwarding) | watches the keyboard receiver's status frames read-only → UDP tells the Mac to "head-start". **The old PowerShell bridge is retired** (its job moved into the server, so a distribution needs only one exe) |
 | **kvm-keywatch** | Mac (C, IOKit) | watches the keyboard device appear/disappear on the Mac — i.e. "has the keyboard left?" |
 | **m1ddc / dwc** | Mac (external CLIs, bundled with the app) | switch the monitor's input source over DDC/CI |
-| **UI language tables** | Mac: `src/Localization.swift` (159 entries); Windows: `launcher/i18n.h` (113 entries) | Chinese original → English lookups; **UI only, logs stay Chinese** (keeping both ends aligned when debugging matters more) |
+| **UI language tables** | Mac: `src/Localization.swift` (159 entries); Windows: `launcher/i18n.h` (119 entries) | Chinese original → English lookups; **UI only, logs stay Chinese** (keeping both ends aligned when debugging matters more) |
 
 **How the UI language takes effect**: on the Mac you switch it in Settings → General → Language and it
 **applies instantly, no restart**; on Windows the priority is `--lang` > `config.ini` `[ui] language` >

@@ -207,7 +207,7 @@ foreach ($p in $mousePaths) {
 
 Write-Host ''
 Write-Host 'To watch only one of them (note the quotes - "&" is special in cmd.exe):'
-Write-Host '   Traiectus-RawInputTest.exe --device "VID_046D&PID_C547"'
+Write-Host '   Traiectus-RawInputTest.exe --device "VID_xxxx&PID_xxxx" (use --list to see yours)'
 Write-Host ''
-Write-Host 'Tip: a short filter also works, e.g. --device "PID_C547" or --device "046D".'
+Write-Host 'Tip: a short filter also works, e.g. --device "PID_xxxx" or just "VID_xxxx".'
 Write-Host ''

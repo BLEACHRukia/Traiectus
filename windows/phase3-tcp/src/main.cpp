@@ -225,7 +225,7 @@ std::string Timestamp() {
     return std::string(buf);
 }
 
-// "\\?\HID#VID_046D&PID_C547#...#{...}"  ->  "VID_046D&PID_C547"
+// "\\?\HID#VID_xxxx&PID_xxxx#...#{...}"  ->  "VID_xxxx&PID_xxxx"
 std::string ShortName(const std::string& full) {
     if (full.empty()) return std::string();
     size_t p = full.find("VID_");

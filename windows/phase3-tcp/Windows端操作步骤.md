@@ -1,4 +1,4 @@
-# Traiectus Phase 3 —— Windows 端操作步骤（交给 Windows 侧的 AI／人执行）
+# Traiectus Phase 3 —— Windows 端操作步骤
 
 > 本文件由 Mac 侧生成，是 Windows 端**当前唯一权威**的操作步骤。
 > 如果它和别的旧文档冲突，以本文件 + 仓库根目录的 [`PROTOCOL.md`](../../PROTOCOL.md) 为准。
@@ -6,16 +6,27 @@
 
 ---
 
-## 0. 一句话任务
+## 0. 怎么读这份文档
 
-把 `windows/phase3-tcp/src/main.cpp` 编译成 `Traiectus-Server.exe`，跑起来，和 Mac 完成联调，然后把结果按第 10 节的模板回报。
+从一台干净的 Windows 开始，到 Mac 能被这只鼠标驱动为止，每一步都写在这里。
+按顺序做，每步都写了"怎么做"和"应该看到什么"。
+
+只想最快跑起来：
+
+```bat
+cd phase3-tcp
+build-mingw.bat
+build\Traiectus-Server.exe
+```
+
+设计/实现上的说明在 [`README.md`](README.md)，协议在 [`../../PROTOCOL.md`](../../PROTOCOL.md)。
 
 ## 1. 背景（30 秒读懂）
 
-Traiectus 是个人的轻量级 KVM：把 Windows 上的罗技 GPW2 鼠标，通过局域网“复制”给 Mac mini 使用。
+Traiectus 是个人的轻量级 KVM：把 Windows 上的鼠标，通过局域网“复制”给 Mac mini 使用。
 
 ```text
-GPW2 ──► Windows PC ──────────────► Mac mini
+鼠标 ──► Windows PC ──────────────► Mac mini
           Traiectus Server（监听端）   Traiectus Client（连接端）
           只读捕获 + TCP 转发         CGEvent 注入本机
 ```
@@ -33,7 +44,7 @@ GPW2 ──► Windows PC ──────────────► Mac mini
 2. 不影响 Windows 键盘
 3. 不修改 Windows 系统文件、注册表、系统设置
 4. 不安装驱动、不使用内核驱动、不用 `SetWindowsHookEx`
-5. 不修改 G HUB 配置、不改 GPW2 的 DPI、不改固件
+5. 不修改鼠标厂商软件（G HUB 之类）的配置、不改鼠标 DPI、不改固件
 6. **不修改防火墙规则**（要改必须由用户明确同意）
 7. 程序退出／崩溃后，本机鼠标必须完全正常
 8. **位移只发相对增量，绝不发绝对坐标**
@@ -100,9 +111,9 @@ build.bat
 ## 5. 先做不需要 Mac 的自检
 
 ```bat
-rem 1) 列出鼠标类设备，确认 GPW2 还在
+rem 1) 列出鼠标类设备，确认你的鼠标还在
 build\Traiectus-Server.exe --list
-rem    预期能看到：VID_046D&PID_C547&MI_00  (LIGHTSPEED 接收器)
+rem    预期能看到：VID_xxxx&PID_xxxx&MI_00  (鼠标无线接收器)
 
 rem 2) 只看帮助
 build\Traiectus-Server.exe --help
@@ -148,7 +159,7 @@ netsh advfirewall firewall add rule name="Traiectus Server" dir=in action=allow 
 2. 启动服务端（**不用设口令**）：
 
    ```bat
-   build\Traiectus-Server.exe --device "VID_046D&PID_C547&MI_00"
+   build\Traiectus-Server.exe --device "VID_xxxx&PID_xxxx&MI_00"
    ```
 
    启动横幅会有一行鉴权状态：全新机器显示「**尚未配对**」（这是正常的，不是警告）；
@@ -198,7 +209,20 @@ netsh advfirewall firewall add rule name="Traiectus Server" dir=in action=allow 
 | 日志出现「收到不认识的命令」 | 两端协议版本不一致，对照 `PROTOCOL.md` |
 | 报握手失败 | 口令不一致（区分大小写），或协议版本不是 1 |
 
-## 10. 回报模板（照这个填，回传给 Mac 侧）
+## 10. 停止与清理
+
+**从托盘启动的**：右键点托盘圆点 →「退出」。服务端、看门狗、端口、光标锁定会一次性清干净
+（Job Object，见 [`launcher/说明.md`](../launcher/说明.md) 第五节）。
+
+**手动启动的**：在控制台里按 Ctrl+C，或者直接关掉窗口。
+
+两种方式都不会留下服务、开机自启项、注册表键或驱动。
+
+如果装到了 `%LOCALAPPDATA%\Traiectus\`，双击 `launcher\卸载 Traiectus.bat` 卸载。
+
+---
+
+## 11. 回报模板（可选：照这个填，方便别人帮你排查）
 
 ```text
 1. 编译
@@ -207,7 +231,7 @@ netsh advfirewall firewall add rule name="Traiectus Server" dir=in action=allow 
    - 报错全文（若失败）：
    - 若修过代码：附 git diff
 
-2. --list 里 GPW2 那行输出：
+2. --list 里你那行鼠标设备的输出：
 
 3. 防火墙
    - 弹窗选了：专用网络 / 公用网络 / 未放行
@@ -229,7 +253,7 @@ netsh advfirewall firewall add rule name="Traiectus Server" dir=in action=allow 
 6. 其他异常／疑问：
 ```
 
-## 11. 不要做的事（避免两边不一致）
+## 12. 不要做的事（避免两边不一致）
 
 - 不要改协议（命令名、字段含义、端口默认值）——要改先和 Mac 侧说，`PROTOCOL.md` 是两端共用的
 - 不要改成绝对坐标、不要加 hook／驱动／`SendInput`、不要顺手加防火墙规则

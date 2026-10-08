@@ -7,7 +7,7 @@
 ## 0. 角色与方向
 
 ```text
-   GPW2 ──► Windows PC ──────────────────► Mac mini
+   鼠标 ──► Windows PC ──────────────────► Mac mini
              Traiectus Server（监听端）        Traiectus Client（连接端）
              accept()                        connect()
 ```

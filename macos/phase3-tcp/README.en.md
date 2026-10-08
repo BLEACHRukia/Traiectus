@@ -179,7 +179,7 @@ The log appears in three places: the app window, stderr (visible when started fr
 | Connection-failure log suppression | with Windows off it reconnects forever; no need to print a line every second |
 | Motion as "read current position + delta" | the protocol only sends relative deltas, avoiding pointer jumps from mismatched resolution maths |
 | The sleep hotkey uses Carbon `RegisterEventHotKey`, **not** the "Services" shortcut in System Settings | Services shortcuts are registered by pbs and lose to the frontmost app's menu shortcuts: Finder's ⌘1 is "as icons", browsers use it for the first tab, so the event never reaches the service. A system-wide hotkey is claimed at the window-server level and works in any app |
-| Sleeping goes through `osascript → System Events`, with `pmset` as fallback | the former works with normal user rights; the latter needs root on most systems. The first trigger asks "wants to control System Events"; if you deny it, Settings shows "需要授权" |
+| Sleeping goes through `osascript → System Events`, with `pmset` as fallback | the former works with normal user rights; the latter needs root on most systems. The first trigger asks "wants to control System Events" - that dialog is the **Automation** pane (System Settings -> Privacy & Security -> Automation); if you deny it, Settings shows "需要授权" |
 
 ## 6. Known limitations (stated honestly)
 

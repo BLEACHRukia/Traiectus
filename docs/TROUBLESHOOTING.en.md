@@ -25,10 +25,12 @@ Check in this order — **eight times out of ten it's the first two**:
 
 1. **Is the Windows server running at all?** The Mac log will show endless reconnects. The server
    is a manual entry point (the tray icon), deliberately not a login item.
-2. **Firewall**: Windows must allow **TCP 45789** (the protocol) and **UDP 45790** (head-start
-   frames + the heartbeat return path; switching control goes over TCP and does not need UDP
-   45791, but leaving that older rule in place is harmless).
-   The repo has `windows/control-channel/Traiectus-firewall.ps1`.
+2. **Firewall**: Windows must allow **TCP 45789** (the protocol) and **UDP 45791** (address
+   discovery - the Mac broadcasts `WHO` and the server unicasts `HERE` back). The head-start channel
+   **UDP 45790 needs no rule of its own**: the packets are sent *by* Windows and the Mac's replies
+   come back to the same socket's ephemeral port, which the firewall allows by state.
+   The repo has `windows/control-channel/Traiectus-firewall.ps1` (it keeps those two port-scoped
+   rules in place).
 3. **Pairing not finished / stale token**: there is **no "type the token by hand" path any more** —
    the token is created by pairing and stored on each side (see `PROTOCOL.md` §2.1). Read the error
    code in the Mac log:

@@ -2,7 +2,7 @@
 
 > From a clean Windows machine to the Mac being driven by this mouse: every step.
 > Design and implementation notes are in [`README.en.md`](README.en.md);
-> the protocol is in [`../PROTOCOL.md`](../PROTOCOL.md).
+> the protocol is in [`../../PROTOCOL.md`](../../PROTOCOL.md).
 >
 > **Path note.** The authoritative repository keeps the Windows sources under
 > `windows/` (`windows/phase3-tcp/...`). In the plain Windows working copy that

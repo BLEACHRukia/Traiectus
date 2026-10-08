@@ -1,6 +1,6 @@
 # Traiectus Server（Phase 3）—— Windows 端捕获并转发
 
-本阶段在 Phase 1（已验证可行的 Raw Input 只读捕获）之上加一个 TCP 服务端：**把 GPW2 的鼠标事件按协议转发给 Mac。**
+本阶段在 Phase 1（已验证可行的 Raw Input 只读捕获）之上加一个 TCP 服务端：**把鼠标事件按协议转发给 Mac。**
 
 协议以仓库根目录的 [`PROTOCOL.md`](../../PROTOCOL.md) 为准。方向是 **Mac 主动连过来**，本程序是监听端，默认端口 `45789`。
 
@@ -40,7 +40,7 @@ mkdir build 2>nul
 ## 3. 运行
 
 ```bat
-rem 1) 先看有哪些鼠标类设备（选 GPW2 那个）
+rem 1) 先看有哪些鼠标类设备（选你在用的那只）
 build\Traiectus-Server.exe --list
 
 rem 2) 正式运行：**什么都不用配** —— 第一次启动会在 8 秒内自动识别

@@ -15,7 +15,7 @@
 | **抢跑读帧**（3b 起做在服务端里） | Windows（C++，与鼠标转发同一个 exe） | 只读监听键盘接收器的状态帧 → UDP 通知 Mac"抢跑"。**原 PowerShell 桥接已退役**（职责并入服务端，分发时只需要一个 exe） |
 | **kvm-keywatch** | Mac（C，IOKit） | 监听键盘设备在 Mac 上的出现/消失 —— 判断"键盘走了没有" |
 | **m1ddc / dwc** | Mac（外部 CLI，随 app 打包） | 通过 DDC/CI 切显示器输入源 |
-| **界面语言表** | Mac：`src/Localization.swift`（159 条）；Windows：`launcher/i18n.h`（113 条） | 中文原文 → English 的对照表；**只翻界面，日志保持中文**（排查时两端对得上更重要） |
+| **界面语言表** | Mac：`src/Localization.swift`（159 条）；Windows：`launcher/i18n.h`（119 条） | 中文原文 → English 的对照表；**只翻界面，日志保持中文**（排查时两端对得上更重要） |
 
 **界面语言怎么生效**：Mac 在「设置 → 通用 → 语言」里切，**当场生效不重启**；Windows 侧三级优先
 ——`--lang` > `config.ini` 的 `[ui] language` > 系统 UI 语言（托盘里也能切，会写回 ini）。
@@ -31,7 +31,7 @@
 ## 2. 鼠标转发
 
 ```text
-GPW2 ──2.4G──► Windows 服务端 ──TCP(局域网, 行协议)──► Mac 客户端 ──CGEvent──► 系统
+鼠标 ──2.4G──► Windows 服务端 ──TCP(局域网, 行协议)──► Mac 客户端 ──CGEvent──► 系统
                     │
                     └─ 只读 Raw Input：不拦截，Windows 本地鼠标照常工作
 ```
