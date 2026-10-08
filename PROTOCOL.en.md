@@ -341,7 +341,54 @@ mouse and keyboard on that machine keep working**.
 
 ---
 
-## 7. Known limitations (recorded honestly)
+## 7. UDP-side channels (head-start frames + address discovery)
+
+The TCP channel carries the handshake, events, heartbeat and control requests; there are two more
+**UDP** channels with completely different jobs, and **neither takes part in authentication**.
+
+### 7.1 Head-start frame channel (server → Mac, UDP 45790)
+
+```text
+KEY <hex bytes…>         ; the keyboard receiver's status frames (whatever was read, read-only)
+HB                       ; keep-alive: every 2 seconds (the first one immediately)
+```
+
+- **Why `HB` exists**: after receiving `KEY`/`HB` the Mac replies **to the source address of the
+  packet** (`PING` → `PONG`, a connectivity self-check); the 2-second `HB` keeps that return path
+  alive and also lets the Mac learn the server's address (one of the three discovery paths, see 7.2).
+- The port is changeable with `--kb-port`; `0` = do not read frames (head-start unavailable, mouse
+  forwarding unaffected).
+- **Only `PING`/`PONG` travel back on this channel**: since 2026-10-01 the early UDP branch
+  `MODE <Mac|Win> <token>` has been **deleted** — control switching always goes over TCP `MODE`
+  (§3.1 / §3.3), and a `MODE` arriving over UDP is ignored as an unknown message.
+- While there is no target address yet (no client has connected and `--mac-ip` is not set),
+  `KEY`/`HB` are dropped silently — no error, no log spam.
+
+### 7.2 Address discovery (UDP 45791)
+
+```text
+Mac     → broadcast  WHO <version>            ; version is currently 1
+Windows → unicast    HERE <version> <TCP port>  ; e.g. HERE 1 45789
+```
+
+- **What it solves**: on a fresh install neither side knows where the other is — the Mac is the
+  connecting side, so it has to know where to connect, while Windows cannot know where to send
+  heartbeats until a client has connected at least once. One broadcast from the Mac breaks the
+  deadlock.
+- The Mac's three discovery paths, in order: ① broadcast `WHO` (milliseconds) ② scan its own /24
+  ③ learn from the source address of the `HB` in 7.1. Once found, the address is written into the
+  client settings and it connects immediately.
+- Three deliberate restrictions on the server side: **only unicast back to the source** (never reply
+  to a broadcast — that would be a reflection amplifier); **at most one reply per source per second**;
+  **the reply carries only the version and the port**, never a token or pairing information.
+- This thread **does not depend on any client connection**: the server answers from the moment it
+  starts.
+- The port is changeable with `--discover-port`; `0` = discovery off (the Mac then falls back to
+  scanning / heartbeat).
+
+---
+
+## 8. Known limitations (recorded honestly)
 
 1. **The feel is linear.** Windows sends raw counts that have not been through "enhance pointer
    precision", and the Mac injects them 1:1, so mouse-only use feels a little "straighter" than a
@@ -358,7 +405,7 @@ mouse and keyboard on that machine keep working**.
 
 ---
 
-## 8. Change log
+## 9. Change log
 
 | Version | Date | Change |
 |---|---|---|
@@ -366,3 +413,4 @@ mouse and keyboard on that machine keep working**.
 | v1.1 | 2026-09-24 | Added `MODE <Win\|Mac>` (server → client, see §3.1). Proposed and implemented by the Windows side, confirmed by the Mac side before being written into the protocol; backwards compatible, protocol version unchanged |
 | v1.2 | 2026-10-01 | Added pairing: `PAIR?` / `PAIR-OK` / `PAIR-NO` / `ERR NOPAIR` (see §2.1). **Backwards compatible** — two sides that already share a token behave exactly as before; plus one behaviour change: with no token, the server accepts no `HELLO` at all (answers `ERR NOPAIR`). Protocol version stays `1` |
 | v1.3 | 2026-10-01 | **The token is no longer user-supplied**: the server drops `--token`, the client drops the token field, and pairing becomes the only authentication path (see §2.1). **Not a single byte of the message format changed**; the client's handling of `ERR AUTH` changed from "stop and sit there" to "clear the token and go through pairing again". Protocol version stays `1` |
+| v1.4 | 2026-10-01 | **Address discovery**: the Mac broadcasts `WHO` and the server unicasts back `HERE` (UDP 45791, see §7.2); the same day the never-used UDP `MODE` branch was deleted (control switching always goes over TCP). This revision also writes both UDP-side channels into the document (§7.1 `KEY`/`HB`, §7.2 `WHO`/`HERE`). Protocol version stays `1` |

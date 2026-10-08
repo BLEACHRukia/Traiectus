@@ -24,8 +24,13 @@
 2. **防火墙**：Windows 要放行 **TCP 45789**（协议）和 **UDP 45790**（抢跑帧 + 心跳回程；
    控制权切换走的是 TCP，不需要 UDP 45791，但早期规则里留着它也无害）。
    仓库里有 `windows/control-channel/Traiectus-firewall.ps1`。
-3. **口令不一致**：Mac 端填的口令要和 `windows/phase3-tcp/token.txt` 一致（同一个词，别带空格）。
-   握手失败在 Mac 日志里是 `ERR`，面板显示"异常"。
+3. **配对没完成 / 口令过期**：现在**没有"手填口令"这条路**了 —— 口令由配对生成、两端各自保存
+   （见 `PROTOCOL.md` §2.1）。看 Mac 日志里的错误码：
+   - `ERR NOPAIR` = 服务端**还没有口令**（从没配对过，或刚在托盘点过「重新配对」）
+     → Mac 上重连一次，Windows 会弹确认框，点「允许」即可；
+   - `ERR AUTH` = 两边口令对不上（多半是 Windows 侧重新配对过）
+     → 客户端会**自己清掉本地口令、重走配对**；若随后收到 `already-paired`，
+     去 Windows 托盘点「重新配对」再连。
 4. **是不是开了两个客户端**：日志里如果反复出现
    `已多次「握手成功后又失联」` —— 服务端同一时刻只接受一个客户端，先确认没有第二份实例在跑。
 5. **网段是否真的通**：先在 Mac 上 `nc -z <Windows-IP> 45789`。
@@ -97,6 +102,6 @@
 | Dock 里的图标变成问号 | 改过 bundle id。把 Dock 磁贴删掉重新拖一次 |
 | 重编 app 后桌面图标还是旧的 | `build.sh` 是**原地更新**（不删整个 .app），图标缓存要等，或 `lsregister -f` 刷一下 |
 | 托盘退出后 Windows 光标还锁着 | 有 200 ms 看门狗会自动解锁；如果没解锁，跑一次 `windows/tools/清理旧版本残留.bat` |
-| `start-server.bat` 报"没有找到握手口令" | 在同目录建 `token.txt`（一行），或设环境变量 `TRAIECTUS_TOKEN` |
-| 托盘弹窗说"token 还是占位符" | `launcher\config.ini` 还没填 —— 从 `config.example.ini` 复制并填入口令 |
+| 服务端日志出现 `ERR NOPAIR` | 服务端没有口令（没配对过，或刚点过「重新配对」）—— Mac 重连一次，Windows 弹框点「允许」 |
+| 客户端提示 `already-paired` | 两边口令对不上（多半 Windows 侧重配对过）—— 去 Windows 托盘 →「重新配对」，然后 Mac 重连 |
 | 搜索泄漏时误报一堆文件 | 用**区分大小写**搜索：共享目录名 `SHARED`（大写）会被不区分大小写的搜索算成命中 |

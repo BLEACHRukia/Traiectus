@@ -29,9 +29,14 @@ Check in this order — **eight times out of ten it's the first two**:
    frames + the heartbeat return path; switching control goes over TCP and does not need UDP
    45791, but leaving that older rule in place is harmless).
    The repo has `windows/control-channel/Traiectus-firewall.ps1`.
-3. **Token mismatch**: the token on the Mac must match `windows/phase3-tcp/token.txt` (the same
-   word, no spaces). A failed handshake shows up as `ERR` in the Mac log and the panel shows
-   "异常" (error).
+3. **Pairing not finished / stale token**: there is **no "type the token by hand" path any more** —
+   the token is created by pairing and stored on each side (see `PROTOCOL.md` §2.1). Read the error
+   code in the Mac log:
+   - `ERR NOPAIR` = the server has **no token yet** (never paired, or "Re-pair" was just clicked in
+     the tray) → reconnect from the Mac; Windows shows the confirm dialog, click "Allow";
+   - `ERR AUTH` = the two sides' tokens disagree (usually because Windows re-paired)
+     → the client **clears its local token by itself and goes through pairing again**; if it then
+     gets `already-paired`, click "Re-pair" in the Windows tray and reconnect.
 4. **Two clients running?** If the log keeps repeating `已多次「握手成功后又失联」`, remember the
    server accepts only one client at a time — make sure there is no second instance.
 5. **Is the subnet actually reachable?** On the Mac: `nc -z <Windows-IP> 45789`.
@@ -113,6 +118,6 @@ Check in this order — **eight times out of ten it's the first two**:
 | The Dock icon turned into a question mark | The bundle id changed. Remove the Dock tile and drag it back |
 | The desktop icon is still the old one after a rebuild | `build.sh` updates the `.app` in place (it doesn't delete it), so the icon cache lags — wait, or refresh with `lsregister -f` |
 | Windows cursor is still locked after quitting the tray | A 200 ms watchdog unlocks it; if it didn't, run `windows/tools/清理旧版本残留.bat` |
-| `start-server.bat` says "没有找到握手口令" | Create `token.txt` (one line) next to it, or set the `TRAIECTUS_TOKEN` environment variable |
-| The tray dialog says "token 还是占位符" | `launcher\config.ini` isn't filled in — copy it from `config.example.ini` and put the token in |
+| The server log shows `ERR NOPAIR` | the server has no token (never paired, or "Re-pair" was just clicked) — reconnect from the Mac and click "Allow" in the dialog on Windows |
+| The client reports `already-paired` | the two sides' tokens disagree (usually Windows re-paired) — use the Windows tray → "Re-pair", then reconnect from the Mac |
 | A search reports a flood of files as leaked | Search **case-sensitively**: the share name `SHARED` (upper case) matches case-insensitive searches |
