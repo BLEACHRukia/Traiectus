@@ -241,6 +241,14 @@
   .how .perm li em { font-style: normal; color: var(--fg); }
   .how .perm-note { display: block; margin-top: 7px; font-size: 15px; color: var(--fg-dim); }
   .how .more { margin-top: 22px; font-size: 14px; color: var(--fg-dim); }
+  /* Short blocks inside "How to use": let the browser balance the line lengths,
+     and turn on CJK punctuation rules (a line may not start with a closing mark). */
+  .how ol > li span, .how ol > li .perm li, .how ol > li .perm-note {
+    text-wrap: balance;
+    line-break: strict;
+  }
+  /* Narrow-screen segmentation: inline on wide screens, block below 480px */
+  .how .seg { display: inline; }
 
   @media (prefers-reduced-motion: reduce) {
     .diagram .dot.on { animation: none; }
@@ -257,6 +265,18 @@
 
   .hero h1 { font-size: 36px; margin-bottom: 36px; }
     .hero .lines { font-size: 16px; }
+
+    /* Narrow screens: 44 -> 31px gutter, 24 -> 21px badge, tighter leading */
+    .how ol > li { padding: 13px 0 13px 31px; }
+    .how ol > li::before {
+      width: 21px; height: 21px; line-height: 21px;
+      font-size: 11px; top: 16px;
+    }
+    .how ol > li b { font-size: 16px; margin-bottom: 3px; }
+    .how ol > li span, .how .perm li, .how .perm-note { line-height: 1.65; }
+    .how .perm { margin-top: 8px; }
+    .how .perm-note { margin-top: 6px; }
+    .how .seg { display: block; }
   }
 </style>
 </head>
@@ -321,7 +341,7 @@
       <li><b>Grant access · Mac</b>
         <ul class="perm">
           <li><em>Accessibility</em> — required, or forwarded clicks do nothing</li>
-          <li><em>Local Network</em> — asked on the first connection to Windows; click Allow</li>
+          <li><span class="seg"><em>Local Network</em> — asked on the first connection to Windows;</span> <span class="seg">click Allow</span></li>
         </ul>
         <span class="perm-note">Auto-start can be turned off under General → Login Items<br>
           Input Monitoring / Screen Recording / Full Disk Access aren't needed<br>
@@ -333,10 +353,10 @@
           <li>No administrator rights, no drivers, no registry changes</li>
         </ul>
       </li>
-      <li><b>Click Allow</b><span>The first time the Mac connects, a dialog pops up on Windows — click Allow</span></li>
+      <li><b>Click Allow</b><span><span class="seg">The first time the Mac connects,</span> <span class="seg">a dialog pops up on Windows — click Allow</span></span></li>
       <li><b>Teach it your monitor</b><span>Display page → Start learning → switch the monitor input when it asks</span></li>
       <li><b>Teach it your keyboard</b><span>Keyboard page → Start learning → press your keyboard&rsquo;s switch key each time it asks</span></li>
-      <li><b>Start using it</b><span>Press the switch key and the keyboard, mouse and screen all follow you over</span></li>
+      <li><b>Start using it</b><span><span class="seg">Press the switch key,</span> <span class="seg">and the keyboard, mouse and screen all follow you over</span></span></li>
     </ol>
   </div>
 </section>
