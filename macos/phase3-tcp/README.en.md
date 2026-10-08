@@ -16,19 +16,48 @@ The protocol is defined by [`PROTOCOL.md`](../../PROTOCOL.md) at the repository 
 macos/phase3-tcp/
 ├─ README.md                 ← this file
 ├─ build.sh                  ← compile + assemble the .app + sign it
+├─ install-app.sh            ← install to ~/Applications + add/remove the login item
 ├─ Info.plist                ← app metadata (includes the local-network usage note)
+├─ l10n/                     ← Chinese/English strings for Info.plist (follows the **system** language)
 └─ src/
    ├─ TraiectusClient.swift    ← TCP / heartbeat / reconnect + event injection + menu-bar state
-   ├─ KeyboardLink.swift       ← keyboard link (Fn key → keyboard + mouse + screen switch together)
+   ├─ TraiectusConfig.swift    ← reads config.json and its defaults
+   ├─ KeyboardLink.swift       ← keyboard link (receives KEY/HB on UDP 45790 → triggers the switch)
+   ├─ KeyboardDetect.swift     ← watches the keyboard device appear/disappear ("has it left?")
+   ├─ KeyboardFrameRules.swift ← status-frame rules: matching + learning + health check
+   ├─ PeerDiscovery.swift      ← finds Windows (broadcast WHO / scan the subnet / learn from HB)
+   ├─ DisplaySwitch.swift      ← monitor input switching (m1ddc / dwc)
    ├─ SleepHotKey.swift        ← sleep hotkey (system-wide hotkey → put this Mac to sleep)
+   ├─ GlobalHotKey.swift       ← Carbon system-wide hotkey registration (sleep / mouse switch)
+   ├─ LoginItem.swift          ← launch at login (SMAppService; switchable in Settings)
+   ├─ Localization.swift       ← the Chinese/English UI table (Chinese original → English)
    └─ ui/
       ├─ TraiectusApp.swift     ← menu-bar app entry point (LSUIElement)
       ├─ PanelView.swift        ← the panel
-      ├─ SettingsView.swift     ← the settings window
+      ├─ SettingsView.swift     ← the settings window (General / Keyboard / Display / Link / Advanced)
       ├─ ShortcutRecorder.swift ← the "press it and it records" shortcut field in Settings
       ├─ ConnectionDiagram.swift← the connection visualisation in the panel
       └─ LinkState.swift        ← state model
 ```
+
+## UI language (中文 / English)
+
+The UI strings are a **Chinese/English table** and can be switched at any time in Settings —
+**the change applies instantly, no restart**:
+
+- Where: **Settings → General → Language** (only 中文 / English; there is no "follow the system"
+  option)
+- The table: `src/Localization.swift` (159 entries). Code writes `L("中文原文")`; in English mode it
+  looks the string up, and falls back to the Chinese original when there is no entry (better Chinese
+  than a blank or a raw key)
+- First launch takes a default from the **system language** (Chinese system → Chinese, otherwise
+  English); once the user picks one, that choice is stored (in `UserDefaults`, `traiectus.language`)
+- **Logs are not translated**: run logs stay Chinese — keeping both sides aligned when debugging
+  matters more
+- When changing copy: edit the Chinese original at the call site *and* the English in the table
+  (edit both, or the line falls back to Chinese)
+- The permission strings inside `Info.plist` are a **separate mechanism** (`l10n/*.lproj`, which
+  follows the system language) — that is a macOS restriction and unrelated to the in-app switch
 
 ## 2. Building
 
@@ -90,8 +119,9 @@ Also, since macOS 15, **the first time you connect to a LAN address it asks "all
 access the local network?" — you must allow it**, otherwise it cannot reach Windows. Loopback
 (127.0.0.1) is exempt.
 
-Fill in three things in the window: **Windows' IP, the port (default 45789) and the token (the same as
-on the Windows side)**, then click "Connect".
+Fill in two things in the window: **Windows' IP and the port (default 45789)**, then click "Connect" —
+**there is no token to type**: on the first connection a confirm dialog appears on Windows; click
+"Allow" and pairing is done (see `PROTOCOL.md` §2.1).
 
 ## 4. Verifying this client without Windows
 

@@ -12,19 +12,43 @@
 macos/phase3-tcp/
 ├─ README.md                 ← 本文件
 ├─ build.sh                  ← 编译 + 组装 .app + 签名
+├─ install-app.sh            ← 装到 ~/Applications + 建/删登录项
 ├─ Info.plist                ← App 元信息（含局域网权限说明）
+├─ l10n/                     ← Info.plist 的中英文本地化（这份跟随**系统**语言）
 └─ src/
    ├─ TraiectusClient.swift    ← TCP/心跳/重连 + 事件注入 + 菜单栏状态
-   ├─ KeyboardLink.swift       ← 键盘联动（Fn 键 → 键盘+鼠标+屏幕一起切）
+   ├─ TraiectusConfig.swift    ← config.json 读取与默认值
+   ├─ KeyboardLink.swift       ← 键盘联动（收 UDP 45790 的 KEY/HB → 触发切换）
+   ├─ KeyboardDetect.swift     ← 键盘设备出现/消失监听（"键盘走了没有"）
+   ├─ KeyboardFrameRules.swift ← 状态帧规则判定 + 学习 + 体检
+   ├─ PeerDiscovery.swift      ← 找 Windows（广播 WHO / 扫网段 / 从 HB 学地址）
+   ├─ DisplaySwitch.swift      ← 显示器输入源切换（m1ddc / dwc）
    ├─ SleepHotKey.swift        ← 睡眠快捷键（系统级热键 → 本机睡眠）
+   ├─ GlobalHotKey.swift       ← Carbon 系统级热键注册（睡眠/鼠标切换共用）
+   ├─ LoginItem.swift          ← 开机自启（SMAppService，可在设置里关）
+   ├─ Localization.swift       ← 界面中英对照表（中文原文 → English）
    └─ ui/
       ├─ TraiectusApp.swift     ← 菜单栏 app 入口（LSUIElement）
       ├─ PanelView.swift        ← 面板
-      ├─ SettingsView.swift     ← 设置窗口
+      ├─ SettingsView.swift     ← 设置窗口（通用 / 键盘 / 显示 / 连接 / 高级）
       ├─ ShortcutRecorder.swift ← 设置里的"按一下即录制"快捷键输入框
       ├─ ConnectionDiagram.swift← 面板里的连接可视化
       └─ LinkState.swift        ← 状态模型
 ```
+
+## 界面语言（中文 / English）
+
+界面文案做成了一张**中英对照表**，设置里可以随时切换，**点一下当场生效、不用重启**：
+
+- 切换位置：**设置 → 通用 → 语言**（只有 中文 / English 两项，没有"跟随系统"）
+- 对照表：`src/Localization.swift`（159 条），界面里写 `L("中文原文")`，英文时查表；
+  查不到就回退显示中文原文（宁可显示中文，也不显示空白或 key）
+- 首次启动按**系统语言**给默认值（中文系统给中文、其它给英文）；用户点过之后按存的来
+  （存在 `UserDefaults` 的 `traiectus.language`）
+- **日志不翻译**：运行日志一律保持中文 —— 排查时两端对得上更重要
+- 改文案时：改调用点的中文原文 + 表里的英文（两边一起改，缺一条就会回退成中文）
+- `Info.plist` 里那几条系统权限说明是**另一套机制**（`l10n/*.lproj`，跟随系统语言）——
+  那是 macOS 的限制，跟上面这个 app 内开关无关
 
 ## 2. 编译
 
@@ -78,7 +102,8 @@ open "build/Traiectus.app"
 
 另外从 macOS 15 起，**首次连接局域网地址时会弹「允许访问 Traiectus Client 访问本地网络？」——要选允许**，否则连不上 Windows。回环地址（127.0.0.1）不受此限制。
 
-窗口里填三样东西：**Windows 的 IP、端口（默认 45789）、口令（与 Windows 端一致）**，然后点「连接」。
+窗口里填两样东西：**Windows 的 IP、端口（默认 45789）**，然后点「连接」——
+**不用填口令**：第一次连接时 Windows 上会弹确认框，点「允许」即完成配对（见 `PROTOCOL.md` §2.1）。
 
 ## 4. 不用 Windows 也能验证这个客户端
 
