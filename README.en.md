@@ -24,22 +24,9 @@ and share **one keyboard, one mouse and one monitor** between them — without b
 It is not a virtual machine and not remote desktop. Both computers run normally and natively;
 Traiectus just moves your *input devices* and *the monitor's input source* between them over your LAN.
 
-```text
-                      ┌──────────────── Screen ─────────────────┐
-                      │                                         │
-      HDMI            │                                         │ DP
-      ┌───────────────┘                                         └────────────────┐
-      │                                                                          │
- ┌────┴─────┐                                                  ┌─────────────────┴──┐
- │Windows PC│◄─── TCP 45789  events / heartbeat / control ────►│Mac mini            │
- │Traiectus │◄╌╌╌╌╌╌╌╌ UDP 45790  head-start KEY / HB ╌╌╌╌╌╌╌╌►│Traiectus Client    │
- │Server    │◄╌╌╌╌╌╌╌ UDP 45791  discovery WHO / HERE ╌╌╌╌╌╌╌╌►│discovery / inject  │
- └────┬─────┘                                                  └─┬──────────────────┘
-      │ 2.4G dongle / USB                                        │ BT / USB
-      └── mouse (2.4G) ──┘                                       └── Corsair K70 Pro Mini ──┘
-```
+![Topology: a Windows PC and a Mac mini sharing one monitor, one keyboard and one mouse, with three channels between them — TCP 45789 (events / heartbeat / control), UDP 45790 (head-start KEY / HB), UDP 45791 (discovery WHO / HERE)](docs/assets/topology.en.svg)
 
-Between the two machines, solid lines are TCP (events / heartbeat / control) and dashed lines are the two UDP side channels — 45790 head-start frames, 45791 address discovery. Neither UDP channel takes part in authentication.
+Solid lines are TCP, dashed lines are UDP; neither UDP channel takes part in authentication.
 
 ## What it does
 
