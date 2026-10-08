@@ -75,10 +75,16 @@
     line-height: 2;
     color: var(--fg);
     margin-bottom: 56px;
+    /* 明确撑满宽度：否则这行 div 会收缩到"最长一行"的宽度，
+       而下面 hang-p 的负外边距会让它的计算宽度略小于行内容，导致最长那行被迫折行 */
+    width: 100%;
   }
 
   .hero .lines .dim { color: var(--fg-dim); }
   .hero .lines .gap { display: block; height: 18px; }
+  /* 行末的全角句号带 ~1em 右边距，居中时会显得文字整体偏左；
+     让它悬挂出去（负右外边距），墨迹才是真正居中 */
+  .hang-p { margin-right: -0.8em; }
 
   .diagram {
     display: block;
@@ -277,11 +283,11 @@
   <h1>Traiectus</h1>
 
   <div class="lines">
-    渡，从此岸到彼岸。<br>
-    从 Win 到 Mac。
+    渡，从此岸到彼岸<span class="hang-p">。</span><br>
+    从 Win 到 Mac<span class="hang-p">。</span>
     <span class="gap"></span>
-    一台显示器、一把键盘、一只鼠标。<br>
-    按一下，全都跟着走。
+    一台显示器、一把键盘、一只鼠标<span class="hang-p">。</span><br>
+    按一下，全都跟着走<span class="hang-p">。</span>
   </div>
 
   <svg class="diagram" viewBox="0 0 320 72" role="img" aria-label="从 Win 渡到 Mac：活动侧在 Win（绿），另一侧是灰点">
@@ -357,7 +363,7 @@
 <footer>
   <div class="wrap">
     <div class="f-brand">Traiectus</div>
-    <div class="f-tag">渡，从此岸到彼岸。</div>
+    <div class="f-tag">渡，从此岸到彼岸<span class="hang-p">。</span></div>
     <nav class="f-links">
       <a href="https://github.com/BLEACHRukia/Traiectus">GitHub</a>
       <a href="https://github.com/BLEACHRukia/Traiectus/releases">下载</a>
