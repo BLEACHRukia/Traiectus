@@ -79,6 +79,28 @@ pairing dialog, the `--show` window, `--help`, `--list`). Without it, the Window
 UI language is used. **The logs stay Chinese in both cases** - the tray finds the
 server-ready line, the device lines and the hotkey lines by grepping the log.
 
+### All command-line options (`--help` is authoritative; this is a quick reference)
+
+| Option | What it does |
+|---|---|
+| `--device <substring>` | Forward only mice whose device path contains the substring; empty = auto-detect the one you use |
+| `--detect` | Force one more device detection (what the tray's "Detect mouse…" uses) |
+| `--port <port>` | TCP listen port, default 45789 |
+| `--kb-port <port>` | UDP port for head-start frames / heartbeat to the Mac, default 45790; 0 = do not read frames |
+| `--discover-port <port>` | UDP port for address discovery, default 45791; 0 = off |
+| `--mac-ip <address>` | Where to send head-start frames; default = the connected client's IP |
+| `--no-kb` | Do not read keyboard receiver frames (no head-start; mouse forwarding unaffected) |
+| `--pair-file <path>` | Pairing file location |
+| `--pair-timeout <sec>` | How long the pairing dialog waits, default 60 (**do not exceed 120**) |
+| `--hotkey <combo>` | Mouse-switch hotkey, default `Ctrl+Alt+M`; `off` = no hotkey |
+| `--bind <address>` | Listen address, default `0.0.0.0` |
+| `--lang zh\|en` | UI language (see above) |
+| `--list` | List mouse-class devices and exit |
+| `--verbose` | Print every forwarded event |
+| `--show` | Also show a small window (not needed for normal use) |
+| `--start-in-mac-mode` | Start in Mac mode |
+| `--watchdog <pid>` | Internal: watchdog |
+
 ## 4. Firewall (this step is your call)
 
 On first run Windows shows "Windows Defender Firewall has blocked some features
