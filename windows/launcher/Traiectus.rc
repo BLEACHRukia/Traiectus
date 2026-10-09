@@ -1,0 +1,14 @@
+// ============================================================================
+//  Windows icon resource.
+//
+//  Why this file exists:
+//    Without it the .exe has no icon resource at all, so Explorer / the
+//    taskbar / Alt-Tab show the generic Windows application icon.
+//    (The tray icon is drawn at runtime as a coloured dot and is unrelated.)
+//
+//  build-launcher.bat passes this file to g++/windres, which embeds
+//  Traiectus.ico into the exe.  Keep this file ASCII-only: it is compiled on
+//  Windows with the local OEM code page.
+// ============================================================================
+
+1 ICON "Traiectus.ico"

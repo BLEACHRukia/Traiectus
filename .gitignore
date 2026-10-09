@@ -3,6 +3,7 @@
 
 # Build output (Windows: build.bat / CMake, macOS: build.sh)
 build/
+dist/
 Release/
 Debug/
 x64/

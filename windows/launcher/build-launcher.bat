@@ -7,6 +7,10 @@ rem    without -static the exe depends on libstdc++-6.dll / libgcc_s_seh-1.dll,
 rem    and once it is copied to %LOCALAPPDATA%\Traiectus\ a double-click fails
 rem    with a missing-DLL dialog.
 rem
+rem  Traiectus.rc is passed to g++ on purpose: the gcc driver hands .rc files to
+rem  windres (shipped in the same w64devkit\bin), which embeds Traiectus.ico so
+rem  the exe shows the app icon in Explorer / the taskbar.
+rem
 rem  ASCII-only on purpose (cmd.exe reads .bat with the local OEM code page).
 rem ===========================================================================
 setlocal
@@ -21,7 +25,9 @@ if not exist "%GXX%" (
         echo [ERROR] g++.exe was not found.
         echo         Install w64devkit, or build with MSVC:
         echo           cl /std:c++17 /utf-8 /EHsc /DUNICODE /D_UNICODE Traiectus.cpp ^
-        echo              /link shell32.lib ws2_32.lib gdi32.lib user32.lib /SUBSYSTEM:WINDOWS
+        echo              Traiectus.rc ^
+        echo              /link shell32.lib ws2_32.lib gdi32.lib user32.lib iphlpapi.lib ^
+        echo              /SUBSYSTEM:WINDOWS
         pause
         exit /b 1
     )
@@ -36,7 +42,7 @@ echo Building Traiectus.exe ...
 "%GXX%" -std=c++17 -O2 -Wall -Wextra -municode -mwindows ^
    -DUNICODE -D_UNICODE ^
    -static -static-libgcc -static-libstdc++ ^
-   -o Traiectus.exe Traiectus.cpp ^
+   -o Traiectus.exe Traiectus.cpp Traiectus.rc ^
    -lshell32 -lws2_32 -lgdi32 -luser32 -liphlpapi
 set "RC=%ERRORLEVEL%"
 
