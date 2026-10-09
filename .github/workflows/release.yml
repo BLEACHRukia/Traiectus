@@ -46,7 +46,7 @@ jobs:
           cd windows/launcher
           g++ -std=c++17 -O2 -Wall -Wextra -municode -mwindows \
              -DUNICODE -D_UNICODE -static -static-libgcc -static-libstdc++ \
-             -o Traiectus.exe Traiectus.cpp \
+             -o Traiectus.exe Traiectus.cpp Traiectus.rc \
              -lshell32 -lws2_32 -lgdi32 -luser32 -liphlpapi
 
       - name: 打包
