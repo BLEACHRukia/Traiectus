@@ -1,0 +1,8 @@
+{
+  "source_commit": "6f4ded211b3bee9a2d2284849c996ccae67577e6",
+  "run_id": 38120707614,
+  "artifact_name": "Traiectus-Windows",
+  "server_sha256": "1dc38a36aec35d05446aeacdfa54baf440b0333e282360c9cb0e58333ecd1307",
+  "validated_on": "2026-10-11",
+  "validation": "native Windows network tests and two-minute user machine functional test passed"
+}
