@@ -70,10 +70,9 @@ public struct SettingsView: View {
         //   ② 「语言」那行自己的选项文案同理，不重建会停在旧语言。
         .frame(width: Localization.isEnglish ? 520 : 460, height: 560)
         .id(Localization.language)
-        // 地址 / 端口"随时可改、改完自动重连"。
+        // 地址由「保存并连接」显式应用；高级页端口仍在停止输入后应用。
         // ⚠️ 监听必须挂在这里（TabView），不能挂在「连接」页里：SwiftUI 只求值当前
         // 选中的标签页，端口挪到「高级」之后，挂在连接页就再也收不到它的变化了。
-        .onChange(of: client.host)     { _, _ in scheduleApply() }
         .onChange(of: client.portText) { _, _ in scheduleApply() }
     }
 
@@ -416,6 +415,9 @@ struct ConnectionSettings: View {
     /// 参数默认收起：地址/端口/口令都是"填一次就忘"的东西，正常连着的时候
     /// 不该占着大半屏。连不上时自动展开（见下面的 onChange），平时也能手点开。
     @State private var paramsOpen = false
+    @State private var hostDraft = ""
+    @State private var addressInvalid = false
+    @FocusState private var addressFocused: Bool
 
     /// 菜单栏图标、面板用的是同一套状态（LinkState），这里只是翻译成人话 + 一个颜色点
     private var statusText: String {
@@ -426,6 +428,9 @@ struct ConnectionSettings: View {
         }
         if case .denied(let why) = client.pairingState {
             return L("配对未完成（") + Self.pairingReasonText(why) + L("）")
+        }
+        if client.addressMode == .fixed && client.isRunning && !client.isConnected {
+            return L("等待固定地址恢复…")
         }
         switch client.linkState {
         case .connected(let side):
@@ -496,7 +501,15 @@ struct ConnectionSettings: View {
                             Button(L("断开")) { client.stop() }
                             Button(L("重新连接")) { client.reconnectNow() }
                         } else {
-                            Button(L("连接")) { client.start() }
+                            Button(L("连接")) {
+                                if hostDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                    && client.addressMode == .automatic {
+                                    client.cancelAddressEditing()
+                                    client.start()
+                                } else {
+                                    addressInvalid = !client.saveAddressAndConnect(hostDraft)
+                                }
+                            }
                         }
                         Spacer()
                     }
@@ -508,26 +521,44 @@ struct ConnectionSettings: View {
                 ExpandRow(title: L("连接设置"), isOpen: $paramsOpen)
 
                 if paramsOpen {
-                    HStack(spacing: 8) {
-                        // 手动触发一次自动发现（广播问 + 扫本网段）。
-                        // 平时用不到 —— 地址为空时开机就会自动找；这是给"地址填错了/换网了"用的。
-                        // 提示挂**外层容器**：查找中这个按钮是 disabled，
-                        // 挂它自己身上的话鼠标放上去不会弹（macOS 的禁用视图收不到悬停）
+                    Picker(L("连接方式"), selection: Binding(
+                        get: { client.addressMode },
+                        set: { client.setAddressMode($0) }
+                    )) {
+                        Text(L("自动发现")).tag(PeerAddressMode.automatic)
+                        Text(L("固定地址")).tag(PeerAddressMode.fixed)
+                    }
+                    .pickerStyle(.segmented)
+                    Text(client.addressMode == .fixed
+                         ? L("只连接已保存的地址；断线后自动重试，不切换到其他地址。")
+                         : L("连接失败时允许自动寻找 Windows 并更新地址。"))
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                    if client.addressMode == .automatic {
                         HStack(spacing: 0) {
                             Button(client.discovering ? L("正在查找…") : L("自动检测")) {
+                                client.cancelAddressEditing()
+                                addressFocused = false
                                 client.autoDetectPeer()
                             }
-                            .disabled(client.discovering)
+                            .disabled(client.discovering || client.isConnected)
                         }
                         .contentShape(Rectangle())
                         .help(L("在本机网段里自动寻找 Windows，找到就填到这里并立刻重连"))
-                        Spacer(minLength: 0)
                     }
                     SettingField(title: L("Windows 地址"), locked: client.linkState.isOnline) {
-                        // TextField 的第一个参数就是占位符（标签被 labelsHidden 藏掉了）
                         TextField(TraiectusConfig.shared.defaultHost.isEmpty
                                   ? "192.168.1.20" : TraiectusConfig.shared.defaultHost,
-                                  text: $client.host)
+                                  text: $hostDraft)
+                            .focused($addressFocused)
+                    }
+                    Button(L("保存并连接")) {
+                        addressInvalid = !client.saveAddressAndConnect(hostDraft)
+                        if !addressInvalid { addressFocused = false }
+                    }
+                    .disabled(client.linkState.isOnline)
+                    if addressInvalid {
+                        Text(L("请填写完整的 IP 地址或主机名，并确认端口有效。"))
+                            .font(.system(size: 12)).foregroundStyle(.red)
                     }
                     // 口令**没有输入框**：它由配对自动生成并在两端各自保存
                     // （PROTOCOL.md §2.1）。用户看不到、也不需要知道它是什么。
@@ -548,7 +579,19 @@ struct ConnectionSettings: View {
         }
         .settingsPageStyle()
         // 连不上就把参数顶出来 —— 那时候用户唯一要做的就是来改这里
-        .onAppear { if !client.linkState.isOnline { paramsOpen = true } }
+        .onAppear {
+            hostDraft = client.host
+            if !client.linkState.isOnline { paramsOpen = true }
+        }
+        .onChange(of: addressFocused) { _, focused in
+            if focused { client.beginAddressEditing() }
+        }
+        .onChange(of: hostDraft) { _, value in
+            if value != client.host { client.beginAddressEditing() }
+            addressInvalid = false
+        }
+        .onChange(of: client.host) { _, value in hostDraft = value }
+        .onDisappear { client.cancelAddressEditing() }
         .onChange(of: client.linkState) { _, new in
             if !new.isOnline { paramsOpen = true }
         }

@@ -301,6 +301,10 @@ public final class TraiectusClient: ObservableObject {
     @Published var discovering = false
 
     // ---- 连接参数（记住上次填的）
+    @Published private(set) var addressMode: PeerAddressMode =
+        PeerAddressMode(rawValue: TraiectusClient.defaults.string(forKey: "traiectus.addressMode") ?? "")
+            ?? .automatic
+    private var addressPolicy = PeerAddressPolicy()
     @Published var host: String = TraiectusClient.defaults.string(forKey: "traiectus.host") ?? ""
     @Published var portText: String = TraiectusClient.defaults.string(forKey: "traiectus.port")
         ?? String(KVMProtocol.defaultPort)
@@ -462,6 +466,7 @@ public final class TraiectusClient: ObservableObject {
     }
 
     public init() {
+        addressPolicy.mode = addressMode
         // 日志超过 1 MB 就重开一个，避免无限增长
         if let attrs = try? FileManager.default.attributesOfItem(atPath: Self.logFilePath),
            let size = attrs[.size] as? NSNumber, size.intValue > 1_000_000 {
@@ -477,17 +482,10 @@ public final class TraiectusClient: ObservableObject {
         // ---- 键盘联动（屏幕 + 鼠标模式）
         keyboardLink.log = { [weak self] text in self?.log(text) }
         // 从 Windows 的心跳里学地址：它每 2 秒发一次 HB，来源地址就是它自己。
-        // 只在"没填过地址"或"现在连不上"时采用 —— 不跟一条正常工作的连接抢。
+        // 只有自动模式、用户请求连接、未编辑且未连接时采用；断线不代表允许换地址。
         keyboardLink.onPeerSeen = { [weak self] ip in
             guard let self else { return }
-            DispatchQueue.main.async {
-                let current = self.host.trimmingCharacters(in: .whitespaces)
-                guard current.isEmpty || !self.isConnected else { return }
-                guard current != ip else { return }
-                self.log("[自动] 从 Windows 的心跳学到地址：\(ip)"
-                         + (current.isEmpty ? "" : "（原来填的是 \(current)）"))
-                self.adoptDetectedPeer(ip, port: nil)
-            }
+            DispatchQueue.main.async { self.receivePeerHeartbeat(ip) }
         }
         // 运行期自检：命中规则的帧 → 更新"检测方式"；判定与实际不一致 → 落盘诊断报告
         keyboardLink.onMatchedFrame = { [weak self] at in
@@ -677,14 +675,24 @@ public final class TraiectusClient: ObservableObject {
         // ⚠️ 先记下"用户想连"，再去判地址 —— 否则"地址为空 → 自动查找"这条路
         //   找到地址之后没人知道我们本来是想连的，会停在"填好了但不连"（实测踩到）。
         wantConnected = true
+        addressPolicy.connectionRequested = true
         guard !hostText.isEmpty else {
+            guard addressMode == .automatic else {
+                wantConnected = false
+                addressPolicy.connectionRequested = false
+                log("固定地址模式：请先保存 Windows 地址")
+                return
+            }
             // 全新安装的第一次：地址是空的 —— 别让用户去查，自己找（PeerDiscovery.swift）
             log("还没有 Windows 地址 → 自动查找")
             autoDetectPeer()
             return
         }
-        guard let port = UInt16(portText.trimmingCharacters(in: .whitespaces)), port > 0 else {
-            log("端口无效：\(portText)"); return
+        guard PeerAddressPolicy.validHost(hostText),
+              let port = UInt16(portText.trimmingCharacters(in: .whitespaces)), port > 0 else {
+            wantConnected = false
+            addressPolicy.connectionRequested = false
+            log("地址或端口无效：\(hostText):\(portText)"); return
         }
 
         TraiectusClient.defaults.set(hostText, forKey: "traiectus.host")
@@ -715,7 +723,7 @@ public final class TraiectusClient: ObservableObject {
 
         let hostText = host.trimmingCharacters(in: .whitespaces)
         let portRaw  = portText.trimmingCharacters(in: .whitespaces)
-        guard !hostText.isEmpty, let port = UInt16(portRaw), port > 0 else { return }
+        guard PeerAddressPolicy.validHost(hostText), let port = UInt16(portRaw), port > 0 else { return }
         let tokenText = token
 
         TraiectusClient.defaults.set(hostText, forKey: "traiectus.host")
@@ -884,7 +892,10 @@ public final class TraiectusClient: ObservableObject {
     /// 走的是同一条路。
     func autoDetectPeer() {
         guard !Self.isRunningInPreview else { return }
-        guard !discovering else { return }
+        guard addressMode == .automatic, !addressPolicy.editing, !isConnected else { return }
+        addressPolicy.connectionRequested = true
+        wantConnected = true
+        guard let discoveryID = addressPolicy.beginDiscovery() else { return }
         let port = UInt16(portText.trimmingCharacters(in: .whitespaces)) ?? KVMProtocol.defaultPort
 
         discovering = true
@@ -901,8 +912,12 @@ public final class TraiectusClient: ObservableObject {
                 //   原因是服务端同一时刻只接受一个客户端：探测包会把已经连上的自己
                 //   挤下线（Windows 侧文档里记过这个坑）。实测踩到过 —— 日志表现为
                 //   "连接结束（本次维持 0.8 秒）"然后重连。
-                let snap: (connected: Bool, host: String) =
-                    DispatchQueue.main.sync { (self.isConnected, self.host) }
+                let snap = DispatchQueue.main.sync {
+                    (connected: self.isConnected, host: self.host,
+                     allowed: self.addressPolicy.allowsDiscovery
+                        && self.addressPolicy.discoveryID == discoveryID)
+                }
+                guard snap.allowed else { return }
                 if snap.connected {
                     self.log("已经连上了 → 跳过扫描")
                 } else {
@@ -916,7 +931,9 @@ public final class TraiectusClient: ObservableObject {
 
             // 结果一律回主线程处理：host / portText 是 @Published，只能在主线程改
             DispatchQueue.main.async {
+                guard self.addressPolicy.finishDiscovery(discoveryID) else { return }
                 self.discovering = false
+                guard !self.isConnected else { return }
                 guard let best = hits.first else {
                     self.log("没找到 Windows —— 请确认它在同一网段，且 Windows 上 Traiectus 已经启动")
                     return
@@ -939,6 +956,7 @@ public final class TraiectusClient: ObservableObject {
     ///   · 客户端没在跑（全新安装开机自动连）→ `start()` 从零开始
     ///   · 客户端已经在跑（用户点了「自动检测」）→ `applyEditedParameters()` 用新地址重连
     private func adoptDetectedPeer(_ ip: String, port: UInt16?) {
+        guard addressPolicy.allowsDiscovery else { return }
         host = ip
         if let p = port { portText = String(p) }
         if isRunning {
@@ -948,7 +966,55 @@ public final class TraiectusClient: ObservableObject {
         }
     }
 
+    /// UDP 回调回到主线程后再判断模式和编辑状态，不能在收包时提前做决定。
+    func receivePeerHeartbeat(_ ip: String) {
+        let current = host.trimmingCharacters(in: .whitespaces)
+        guard addressPolicy.allowsDiscovery, !isConnected, current != ip else { return }
+        log("[自动] 从 Windows 的心跳学到地址：\(ip)"
+            + (current.isEmpty ? "" : "（原来填的是 \(current)）"))
+        adoptDetectedPeer(ip, port: nil)
+    }
+
+    private func cancelPeerDiscovery() {
+        addressPolicy.cancelDiscovery()
+        discovering = false
+    }
+
+    func setAddressMode(_ mode: PeerAddressMode) {
+        addressMode = mode
+        addressPolicy.mode = mode
+        cancelPeerDiscovery()
+        TraiectusClient.defaults.set(mode.rawValue, forKey: "traiectus.addressMode")
+        log(mode == .fixed ? "连接模式：固定地址（断线只重试已保存的地址）" : "连接模式：自动发现")
+    }
+
+    func beginAddressEditing() {
+        addressPolicy.editing = true
+        cancelPeerDiscovery()
+    }
+
+    func cancelAddressEditing() { addressPolicy.editing = false }
+
+    @discardableResult
+    func saveAddressAndConnect(_ text: String) -> Bool {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard PeerAddressPolicy.validHost(value),
+              let port = UInt16(portText.trimmingCharacters(in: .whitespaces)), port > 0 else {
+            log("地址或端口无效，未保存")
+            return false
+        }
+        cancelPeerDiscovery()
+        host = value
+        // 先将完整值保存，再允许心跳学习；固定模式始终挡住它。
+        applyEditedParameters()
+        addressPolicy.editing = false
+        if !isRunning { start() }
+        return true
+    }
+
     func stop() {
+        addressPolicy.connectionRequested = false
+        cancelPeerDiscovery()
         wantConnected = false
         DispatchQueue.main.async { self.isRunning = false }
         DispatchQueue.main.async { self.pairingState = .idle }

@@ -116,6 +116,9 @@ jobs:
 
       # build.sh 会把上面两个工具打进 .app；找不到自签名证书时自动退回 ad-hoc 签名；
       # 图标同理（actool 不可用时回退到仓库里预生成的 AppIcon.icns）
+      - name: 验证固定地址策略
+        run: ./tools/peer-address-test/run.sh
+
       - name: 编译 Traiectus.app
         run: cd macos/phase3-tcp && ./build.sh
 
@@ -137,6 +140,9 @@ jobs:
              （注入鼠标事件需要它）；连内网地址时还会问一次「允许访问本地网络」。
           4) 地址不用填（会自己在局域网里找 Windows），也没有口令 ——
              第一次连接时 Windows 上弹确认框，点「允许」即完成配对。
+
+          网线直连或多网卡：在「设置 → 连接 → 连接设置」选「固定地址」，
+          填写 Windows 的直连 IP 并点「保存并连接」。断线后只重试这个地址。
 
           菜单栏出现图标即已运行；设置见「设置」（⌘,）。
           EOF

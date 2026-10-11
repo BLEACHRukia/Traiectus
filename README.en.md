@@ -176,3 +176,7 @@ monitor — this saves you a hardware KVM.
 
 MIT — see [`LICENSE`](LICENSE). Third-party components and trademark notices:
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+## Fixed address connections (0.1.1)
+
+For a direct Ethernet link or multiple network adapters, select **Fixed address** in Settings → Connection, enter the Windows address, and click **Save and connect**. Reconnection uses only this saved address; discovery cannot replace it with a Wi-Fi address. Existing installations retain Automatic mode by default.

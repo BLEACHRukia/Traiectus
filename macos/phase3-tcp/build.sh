@@ -21,7 +21,7 @@ SRC_FILES=(src/TraiectusClient.swift src/KeyboardLink.swift src/SleepHotKey.swif
            src/GlobalHotKey.swift
            src/Localization.swift
            src/LoginItem.swift
-           src/TraiectusConfig.swift src/KeyboardFrameRules.swift src/PeerDiscovery.swift src/DisplaySwitch.swift
+           src/TraiectusConfig.swift src/KeyboardFrameRules.swift src/PeerDiscovery.swift src/PeerAddressPolicy.swift src/DisplaySwitch.swift
            src/KeyboardDetect.swift
            src/ui/LinkState.swift src/ui/ConnectionDiagram.swift
            src/ui/PanelView.swift src/ui/SettingsView.swift

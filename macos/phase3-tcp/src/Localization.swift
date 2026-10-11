@@ -185,6 +185,17 @@ enum Localization {
         "自动检测": "Auto-detect",
         "在本机网段里自动寻找 Windows，找到就填到这里并立刻重连":
             "Finds Windows on your LAN, fills it in and reconnects",
+        "连接方式": "Connection mode",
+        "自动发现": "Automatic",
+        "固定地址": "Fixed address",
+        "只连接已保存的地址；断线后自动重试，不切换到其他地址。":
+            "Uses only the saved address and retries it after disconnection.",
+        "连接失败时允许自动寻找 Windows 并更新地址。":
+            "Allows finding Windows and updating its address when disconnected.",
+        "等待固定地址恢复…": "Waiting for the fixed address…",
+        "保存并连接": "Save and connect",
+        "请填写完整的 IP 地址或主机名，并确认端口有效。":
+            "Enter a complete IP address or hostname and a valid port.",
         "Windows 地址": "Windows address",
         "启动时自动连接": "Connect on launch",
 
