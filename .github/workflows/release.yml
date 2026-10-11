@@ -85,7 +85,7 @@ jobs:
           path: dist/Traiectus-Windows.zip
 
       - name: 挂到 Release（仅 tag）
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/tags/v0.1.0'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -157,7 +157,7 @@ jobs:
           path: dist/Traiectus-macOS.zip
 
       - name: 挂到 Release（仅 tag）
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/tags/v0.1.0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -168,4 +168,22 @@ jobs:
             gh release delete "$GITHUB_REF_NAME" --yes
             gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
             gh release upload "$GITHUB_REF_NAME" dist/Traiectus-macOS.zip --clobber
+          fi
+
+      - name: 替换现有 v0.1.0 的 Mac 安装包（保留版本与下载链接）
+        if: github.ref == 'refs/tags/v0.1.0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.1.0 >/dev/null
+          gh release upload v0.1.0 dist/Traiectus-macOS.zip --clobber
+
+          # 本次发布最初误建了 v0.1.1；只清理指向该次提交的标签和 Release。
+          # 若同名标签属于后续真实版本，不能删除。
+          tag_object=$(gh api repos/${{ github.repository }}/git/ref/tags/v0.1.1 --jq '.object.sha' 2>/dev/null || true)
+          if [ "$tag_object" = "ecce45eb086338f34a57a52a5b9805dfcd3d3826" ]; then
+            tag_commit=$(gh api repos/${{ github.repository }}/git/tags/"$tag_object" --jq '.object.sha')
+            if [ "$tag_commit" = "5e89a197583437a096046a4306557e190b55bf63" ]; then
+              gh release delete v0.1.1 --yes --cleanup-tag
+            fi
           fi
