@@ -27,7 +27,7 @@ jobs:
         with:
           msystem: MINGW64
           update: false
-          install: mingw-w64-x86_64-gcc
+          install: mingw-w64-x86_64-gcc git
 
       # 编译命令与 windows/phase3-tcp/build-mingw.bat 一字不差
       - name: 编译 Traiectus-Server.exe
