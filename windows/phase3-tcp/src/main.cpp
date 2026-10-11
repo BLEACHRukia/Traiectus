@@ -106,6 +106,9 @@ std::atomic<bool> g_running{true};
 
 // 网络相关
 SOCKET            g_listener  = INVALID_SOCKET;
+HANDLE            g_outputWake = nullptr; // auto-reset: enqueue wakes the network thread
+HANDLE            g_networkStop = nullptr; // manual-reset: shutdown must wake an idle wait
+
 std::atomic<bool> g_clientPresent{false};   // TCP 已连上（未必握手完）
 std::atomic<bool> g_clientReady{false};     // 握手完成，可以发事件了
 std::atomic<double> g_lastRttMs{-1.0};
@@ -118,6 +121,25 @@ std::mutex              g_outMutex;
 std::deque<std::string> g_outQueue;
 std::deque<unsigned long long> g_outQueueStamp;   // 与 g_outQueue 一一对应：入队时刻的 QPC tick
 std::atomic<double> g_sendLatencyMaxMs{0.0};      // 本统计窗口内"入队 → 真正发出"的最大耗时
+
+bool InitializeNetworkWake() {
+    g_outputWake = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    g_networkStop = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (g_outputWake && g_networkStop) return true;
+    if (g_outputWake) ::CloseHandle(g_outputWake);
+    if (g_networkStop) ::CloseHandle(g_networkStop);
+    g_outputWake = g_networkStop = nullptr;
+    return false;
+}
+
+void DestroyNetworkWake() {
+    // Pairing replies can enqueue from another thread during shutdown.
+    // Serialize closing the wake handle with EnqueueLine's SetEvent.
+    std::lock_guard<std::mutex> lock(g_outMutex);
+    if (g_outputWake) ::CloseHandle(g_outputWake);
+    if (g_networkStop) ::CloseHandle(g_networkStop);
+    g_outputWake = g_networkStop = nullptr;
+}
 
 // ---------------------------------------------------------------------------
 //  高精度计时（QueryPerformanceCounter）
@@ -256,13 +278,16 @@ void EnqueueLine(std::string line) {
     line.push_back('\n');
     std::lock_guard<std::mutex> lock(g_outMutex);
     if (g_outQueue.size() >= g_opts.maxQueue) {
-        // 对端消费不过来。继续堆下去只会吃内存，交给网络线程断开并让客户端重连。
         g_outputOverflow = true;
         g_queueDrops.fetch_add(1);
-        return;
+    } else {
+        g_outQueue.push_back(std::move(line));
+        g_outQueueStamp.push_back(QpcTicks());
     }
-    g_outQueue.push_back(std::move(line));
-    g_outQueueStamp.push_back(QpcTicks());
+    // A 1 ms select timeout is not a 1 ms delivery guarantee on Windows.
+    // Notify after publishing the queue entry; auto-reset coalesces bursts and
+    // retains a notification arriving just before the network thread waits.
+    if (g_outputWake) ::SetEvent(g_outputWake);
 }
 
 bool HasPendingOutput() {
@@ -718,6 +743,8 @@ void HandleRawInput(HRAWINPUT hRawInput) {
 
 struct Client {
     SOCKET      sock            = INVALID_SOCKET;
+    WSAEVENT    socketEvent     = WSA_INVALID_EVENT;
+    bool        writeBlocked    = false;
     bool        handshaken      = false;
     std::string recvBuffer;
     std::string currentLine;        // 正在发送的那一行
@@ -1407,13 +1434,6 @@ bool FlushOutput(Client& cl) {
 
     while (linesThisRound < 1024) {
         if (cl.currentOffset >= cl.currentLine.size()) {
-            // 上一行已经完整发出 → 统计这一行的"入队 → 发出"耗时（取窗口内峰值）
-            if (cl.currentStamp != 0) {
-                const double ms = TicksToMs(QpcTicks() - cl.currentStamp);
-                double prev = g_sendLatencyMaxMs.load();
-                while (ms > prev && !g_sendLatencyMaxMs.compare_exchange_weak(prev, ms)) {}
-                cl.currentStamp = 0;
-            }
             cl.currentLine.clear();
             cl.currentOffset = 0;
             if (g_outQueue.empty()) return true;
@@ -1430,13 +1450,24 @@ bool FlushOutput(Client& cl) {
         const int   n = ::send(cl.sock, data, remaining, 0);
 
         if (n == SOCKET_ERROR) {
-            if (::WSAGetLastError() == WSAEWOULDBLOCK) return true;   // 稍后再发
+            if (::WSAGetLastError() == WSAEWOULDBLOCK) {
+                cl.writeBlocked = true; // wait for FD_WRITE, including a partial line
+                return true;
+            }
             return false;
         }
         if (n <= 0) return false;
 
         cl.currentOffset += (size_t)n;
         if (cl.currentOffset >= cl.currentLine.size()) {
+            // Measure at send completion, even at the 1024-line batch boundary.
+            // Deferring this until the next flush would include later idle time.
+            if (cl.currentStamp != 0) {
+                const double ms = TicksToMs(QpcTicks() - cl.currentStamp);
+                double prev = g_sendLatencyMaxMs.load();
+                while (ms > prev && !g_sendLatencyMaxMs.compare_exchange_weak(prev, ms)) {}
+                cl.currentStamp = 0;
+            }
             cl.currentLine.clear();
             cl.currentOffset = 0;
             ++linesThisRound;
@@ -1463,6 +1494,7 @@ void CloseClient(Client& cl, const char* why) {
     g_peerIp4 = 0;
 
     ::closesocket(cl.sock);
+    if (cl.socketEvent != WSA_INVALID_EVENT) ::WSACloseEvent(cl.socketEvent);
     const std::string peer = cl.peer;
     const bool wasHandshaken = cl.handshaken;
 
@@ -1474,41 +1506,67 @@ void CloseClient(Client& cl, const char* why) {
 }
 
 // ---------------------------------------------------------------------------
-//  网络线程：一次 select 同时处理 accept / 收 / 发 / 心跳
+//  网络线程：事件驱动 accept / 收 / 发，超时只服务心跳与关闭期限
 // ---------------------------------------------------------------------------
+
+bool HasClientOutput(const Client& cl) {
+    // The deque can be empty while the socket still owns a partially sent line.
+    return cl.currentOffset < cl.currentLine.size() || HasPendingOutput();
+}
+
+DWORD NetworkWaitTimeout(const Client& cl) {
+    if (cl.sock == INVALID_SOCKET) return INFINITE;
+    const ULONGLONG now = ::GetTickCount64();
+    auto remaining = [now](ULONGLONG deadline) -> DWORD {
+        return deadline <= now ? 0 : (DWORD)(deadline - now);
+    };
+    // Closing connections no longer run heartbeat processing below. Including
+    // an expired heartbeat deadline here would turn backpressure into a spin.
+    if (cl.closeAfterFlush) return remaining(cl.closeDeadline + 1);
+    DWORD timeout = remaining(cl.lastPing + kHeartbeatMs);
+    const bool pairingWait = !cl.handshaken && (g_pairDialogOpen.load() || cl.pairPending);
+    if (!pairingWait) timeout = std::min(timeout, remaining(cl.lastRecv + kPeerTimeoutMs + 1));
+    return timeout;
+}
 
 void NetworkThread() {
     Client cl;
+    WSAEVENT listenerEvent = ::WSACreateEvent();
+    if (listenerEvent == WSA_INVALID_EVENT ||
+        ::WSAEventSelect(g_listener, listenerEvent, FD_ACCEPT | FD_CLOSE) != 0) {
+        Log("注册监听网络事件失败（%d）", ::WSAGetLastError());
+        if (listenerEvent != WSA_INVALID_EVENT) ::WSACloseEvent(listenerEvent);
+        g_running = false;
+        if (g_hwnd) ::PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+        return;
+    }
+    Log("发送调度：事件唤醒（入队通知；空闲等待；不依赖1ms轮询）");
 
     while (g_running) {
-        fd_set readSet;
-        fd_set writeSet;
-        FD_ZERO(&readSet);
-        FD_ZERO(&writeSet);
-        FD_SET(g_listener, &readSet);
-
-        const bool haveClient = (cl.sock != INVALID_SOCKET);
-        if (haveClient) {
-            FD_SET(cl.sock, &readSet);
-            if (HasPendingOutput()) FD_SET(cl.sock, &writeSet);
+        HANDLE events[] = {g_networkStop, g_outputWake, listenerEvent, cl.socketEvent};
+        const DWORD count = cl.sock == INVALID_SOCKET ? 3 : 4;
+        const DWORD waited = ::WaitForMultipleObjects(count, events, FALSE, NetworkWaitTimeout(cl));
+        if (!g_running || waited == WAIT_OBJECT_0) break;
+        if (waited == WAIT_FAILED) {
+            Log("等待网络事件失败（%lu）", ::GetLastError());
+            g_running = false;
+            if (g_hwnd) ::PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+            break;
         }
 
-        // ---- 超时必须跟着"有没有客户端"走（第二轮联调的关键修复）----
-        // 曾经的固定 200 ms 是一个真实 bug：写集合只在循环开头队列非空时才登记，
-        // 而 Raw Input 线程可能在"检查队列是否为空"之后、select 之前才把事件入队
-        // —— 那一行就要干等满 200 ms 才可能被发出。
-        // 实测表现：事件成批送达 + 往返延迟 0~200 ms 均匀铺开（用户感受到的就是卡顿）。
-        // 有客户端时用 1 ms，把最坏发送延迟压到 1 ms 以内；没有客户端时仍用 200 ms 省 CPU。
-        timeval timeout{0, haveClient ? 1000 : 200000};
-        const int ready = ::select(0, &readSet, haveClient ? &writeSet : nullptr, nullptr, &timeout);
-        if (ready == SOCKET_ERROR) {
-            Log("select 出错（%d），1 秒后重试", ::WSAGetLastError());
-            ::Sleep(1000);
-            continue;
+        WSANETWORKEVENTS listenerEvents{}, clientEvents{};
+        if (::WSAEnumNetworkEvents(g_listener, listenerEvent, &listenerEvents) != 0) {
+            Log("读取监听网络事件失败（%d）", ::WSAGetLastError());
+            g_running = false;
+            if (g_hwnd) ::PostMessageW(g_hwnd, WM_CLOSE, 0, 0);
+            break;
         }
-
+        if (cl.sock != INVALID_SOCKET &&
+            ::WSAEnumNetworkEvents(cl.sock, cl.socketEvent, &clientEvents) != 0) {
+            CloseClient(cl, "读取网络事件失败");
+        }
         // ---- 接受新连接（同一时刻只服务一个，新连接顶掉旧的）----
-        if (FD_ISSET(g_listener, &readSet)) {
+        if (listenerEvents.lNetworkEvents & FD_ACCEPT) {
             sockaddr_in from{};
             int fromLen = (int)sizeof(from);
             SOCKET s = ::accept(g_listener, (sockaddr*)&from, &fromLen);
@@ -1527,6 +1585,15 @@ void NetworkThread() {
                         ::WSAGetLastError());
                 }
 
+                WSAEVENT socketEvent = ::WSACreateEvent();
+                if (socketEvent == WSA_INVALID_EVENT ||
+                    ::WSAEventSelect(s, socketEvent, FD_READ | FD_WRITE | FD_CLOSE) != 0) {
+                    Log("注册客户端网络事件失败（%d）", ::WSAGetLastError());
+                    if (socketEvent != WSA_INVALID_EVENT) ::WSACloseEvent(socketEvent);
+                    ::closesocket(s);
+                    continue;
+                }
+
                 char ip[64] = "?";
                 ::inet_ntop(AF_INET, &from.sin_addr, ip, sizeof(ip));
 
@@ -1536,6 +1603,8 @@ void NetworkThread() {
                 }
 
                 cl.sock        = s;
+                cl.socketEvent = socketEvent;
+                clientEvents = WSANETWORKEVENTS{}; // old client's events cannot apply here
                 // 新连接必须复位"刷干净再关"的标记。
                 // 这个字段是随 Client 结构长期存在的，不清的话会把上一个连接
                 // 遗留的 true 带过来 —— 表现为"刚连上就被自己关掉"
@@ -1554,35 +1623,48 @@ void NetworkThread() {
             }
         }
 
-        // ---- 收 ----
-        if (cl.sock != INVALID_SOCKET && FD_ISSET(cl.sock, &readSet)) {
-            char buf[4096];
-            const int n = ::recv(cl.sock, buf, (int)sizeof(buf), 0);
-            if (n == 0) {
-                CloseClient(cl, "对端关闭了连接");
-            } else if (n == SOCKET_ERROR) {
-                const int e = ::WSAGetLastError();
-                if (e != WSAEWOULDBLOCK) CloseClient(cl, "接收出错");
-            } else {
-                cl.lastRecv = ::GetTickCount64();
-                cl.recvBuffer.append(buf, (size_t)n);
-                if (!ProcessClientBuffer(cl)) {
-                    // 先只做标记，等下面"刷干净再关"那段统一收尾
-                    cl.closeAfterFlush = true;
-                    cl.closeDeadline   = ::GetTickCount64() + 1000;
+
+        // Drain reads before sending the responses they enqueue. FD_CLOSE may
+        // arrive together with unread bytes, so process the readable tail first.
+        if (cl.sock != INVALID_SOCKET &&
+            (clientEvents.lNetworkEvents & (FD_READ | FD_CLOSE))) {
+            for (;;) {
+                char buf[4096];
+                const int n = ::recv(cl.sock, buf, (int)sizeof(buf), 0);
+                if (n > 0) {
+                    cl.lastRecv = ::GetTickCount64();
+                    cl.recvBuffer.append(buf, (size_t)n);
+                    if (!ProcessClientBuffer(cl)) {
+                        cl.closeAfterFlush = true;
+                        cl.closeDeadline = ::GetTickCount64() + 1000;
+                        break;
+                    }
+                } else if (n == 0) {
+                    CloseClient(cl, "对端关闭了连接");
+                    break;
+                } else {
+                    if (::WSAGetLastError() != WSAEWOULDBLOCK ||
+                        (clientEvents.lNetworkEvents & FD_CLOSE))
+                        CloseClient(cl, "接收出错");
+                    break;
                 }
             }
         }
 
-        // ---- 发 ----
-        if (cl.sock != INVALID_SOCKET && FD_ISSET(cl.sock, &writeSet)) {
-            if (!FlushOutput(cl)) CloseClient(cl, "发送失败");
+        if (cl.sock != INVALID_SOCKET) {
+            if (clientEvents.lNetworkEvents & FD_WRITE) cl.writeBlocked = false;
+            if (!cl.writeBlocked && HasClientOutput(cl)) {
+                if (!FlushOutput(cl)) CloseClient(cl, "发送失败");
+                // FlushOutput limits batch size so input cannot starve receives.
+                // Continue an unfinished batch promptly, but never busy-loop on
+                // a full socket: WSAEventSelect supplies the next FD_WRITE.
+                else if (!cl.writeBlocked && HasClientOutput(cl)) ::SetEvent(g_outputWake);
+            }
         }
-
         // 配对答案已经刷出去了 → 这条连接不再处于"等配对"状态。
         // 客户端拿到答案后会立刻回 HELLO（或主动断开），所以给它**重新起算 3 秒**：
         // 否则刚刚刷出去、客户端还没来得及回话，就会被下面的判死规则关掉。
-        if (cl.pairPending && !g_pairDialogOpen.load() && !HasPendingOutput()) {
+        if (cl.pairPending && !g_pairDialogOpen.load() && !HasClientOutput(cl)) {
             cl.pairPending = false;
             cl.lastRecv    = ::GetTickCount64();
             Log("配对：答案已发出，恢复常规心跳判死（重新起算 3 秒）");
@@ -1592,8 +1674,7 @@ void NetworkThread() {
         //  FlushOutput 是非阻塞的，一次未必发得完（半行会等下次可写），
         //  所以给 1 秒兜底，不能假设一轮就发干净。
         if (cl.closeAfterFlush && cl.sock != INVALID_SOCKET) {
-            FlushOutput(cl);
-            if (g_outQueue.empty() || ::GetTickCount64() > cl.closeDeadline) {
+            if (!HasClientOutput(cl) || ::GetTickCount64() > cl.closeDeadline) {
                 // 优雅半关：直接 closesocket 有可能发 RST，把对端还没读走的数据冲掉
                 ::shutdown(cl.sock, SD_SEND);
                 CloseClient(cl, "协议错误");
@@ -1636,6 +1717,7 @@ void NetworkThread() {
     }
 
     if (cl.sock != INVALID_SOCKET) CloseClient(cl, "程序退出");
+    ::WSACloseEvent(listenerEvent);
 }
 
 // ---------------------------------------------------------------------------
@@ -2688,6 +2770,15 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     // ---- 启动网络线程 ----
+    if (!InitializeNetworkWake()) {
+        ::printf("创建网络唤醒事件失败（%lu）\n", ::GetLastError());
+        ForceWindowsMode("初始化失败");
+        if (g_hotkeyRegistered) ::UnregisterHotKey(g_hwnd, kHotkeyId);
+        ::DestroyWindow(g_hwnd);
+        ::closesocket(g_listener);
+        ::WSACleanup();
+        return 6;
+    }
     ::QueryPerformanceFrequency(&g_qpcFreq);   // 供高精度往返/发送延迟统计使用
     std::thread networkThread(NetworkThread);
     // 3b：键盘抢跑（读接收器状态帧 + HB + 收回包）—— 原来是 PowerShell 桥接干的
@@ -2759,11 +2850,13 @@ int wmain(int argc, wchar_t** argv) {
         for (int i = 0; i < 40 && g_pairDialogHwnd.load() != nullptr; ++i) ::Sleep(25);
     }
 
+    ::SetEvent(g_networkStop); // wake the no-client INFINITE wait before joining
+    if (networkThread.joinable()) networkThread.join();
+    DestroyNetworkWake();
     if (g_listener != INVALID_SOCKET) {
         ::closesocket(g_listener);
         g_listener = INVALID_SOCKET;
     }
-    if (networkThread.joinable()) networkThread.join();
 
     RAWINPUTDEVICE removeRequest{};
     removeRequest.usUsagePage = 0x01;

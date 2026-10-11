@@ -19,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # windows-latest 没预装 g++，用 msys2 装 mingw-w64 的 gcc
       - uses: msys2/setup-msys2@v2
@@ -37,6 +39,32 @@ jobs:
              -DUNICODE -D_UNICODE -D__USE_MINGW_ANSI_STDIO=1 -static -static-libgcc -static-libstdc++ \
              -o build/Traiectus-Server.exe src/main.cpp \
              -luser32 -lgdi32 -lws2_32 -lsetupapi -lhid -lbcrypt -liphlpapi
+
+      - name: 验证事件唤醒、背压与连接恢复
+        shell: msys2 {0}
+        run: |
+          cd windows/phase3-tcp
+          g++ -std=c++17 -O2 -Wall -Wextra -municode -mconsole \
+             -DUNICODE -D_UNICODE -D__USE_MINGW_ANSI_STDIO=1 -static \
+             -o build/network-tests.exe tests/network-test.cpp \
+             -luser32 -lgdi32 -lws2_32 -lsetupapi -lhid -lbcrypt -liphlpapi
+          ./build/network-tests.exe
+          ./build/network-tests.exe --benchmark > build/benchmark-event.txt
+          mkdir -p build/baseline
+          git show 85b0a4a1f61e4db74ab8f11d5b622cd311da1836:windows/phase3-tcp/src/main.cpp > build/baseline/main.cpp
+          cp src/i18n.h src/netinfo.h build/baseline/
+          g++ -std=c++17 -O2 -municode -mconsole -DUNICODE -D_UNICODE \
+             -D__USE_MINGW_ANSI_STDIO=1 -static -DTRAIECTUS_POLLING_BASELINE \
+             '-DTRAIECTUS_SERVER_SOURCE="../build/baseline/main.cpp"' \
+             -o build/network-baseline.exe tests/network-test.cpp \
+             -luser32 -lgdi32 -lws2_32 -lsetupapi -lhid -lbcrypt -liphlpapi
+          ./build/network-baseline.exe --benchmark > build/benchmark-polling.txt
+          cat build/benchmark-event.txt build/benchmark-polling.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-network-validation
+          path: windows/phase3-tcp/build/benchmark-*.txt
 
       # 与 windows/launcher/build-launcher.bat 一致
       # （-static 必须保留，否则拷到别的机器会缺 libstdc++-6.dll）
@@ -101,6 +129,26 @@ jobs:
             gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
             gh release upload "$env:GITHUB_REF_NAME" dist/Traiectus-Windows.zip --clobber
           }
+
+      - name: 替换现有 v0.1.0 的 Windows 服务端（保留其他文件）
+        if: github.ref == 'refs/tags/v0.1.0'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view v0.1.0
+          if ($LASTEXITCODE -ne 0) { throw "Existing release unavailable" }
+          New-Item -ItemType Directory -Force -Path refresh | Out-Null
+          gh release download v0.1.0 --pattern Traiectus-Windows.zip --dir refresh
+          if ($LASTEXITCODE -ne 0) { throw "Cannot preserve existing package" }
+          Expand-Archive refresh/Traiectus-Windows.zip refresh/package
+          $servers = @(Get-ChildItem refresh/package -Recurse -Filter Traiectus-Server.exe)
+          if ($servers.Count -ne 1) { throw "Unexpected package layout" }
+          Copy-Item windows/phase3-tcp/build/Traiectus-Server.exe $servers[0].FullName -Force
+          Compress-Archive -Path refresh/package/* -DestinationPath refresh/updated.zip
+          Move-Item refresh/updated.zip refresh/Traiectus-Windows.zip -Force
+          gh release upload v0.1.0 refresh/Traiectus-Windows.zip --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Windows asset replacement failed" }
 
   macos:
     name: macOS（客户端 app）
@@ -168,22 +216,4 @@ jobs:
             gh release delete "$GITHUB_REF_NAME" --yes
             gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "见 README.md 与 PROTOCOL.md。"
             gh release upload "$GITHUB_REF_NAME" dist/Traiectus-macOS.zip --clobber
-          fi
-
-      - name: 替换现有 v0.1.0 的 Mac 安装包（保留版本与下载链接）
-        if: github.ref == 'refs/tags/v0.1.0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release view v0.1.0 >/dev/null
-          gh release upload v0.1.0 dist/Traiectus-macOS.zip --clobber
-
-          # 本次发布最初误建了 v0.1.1；只清理指向该次提交的标签和 Release。
-          # 若同名标签属于后续真实版本，不能删除。
-          tag_object=$(gh api repos/${{ github.repository }}/git/ref/tags/v0.1.1 --jq '.object.sha' 2>/dev/null || true)
-          if [ "$tag_object" = "ecce45eb086338f34a57a52a5b9805dfcd3d3826" ]; then
-            tag_commit=$(gh api repos/${{ github.repository }}/git/tags/"$tag_object" --jq '.object.sha')
-            if [ "$tag_commit" = "5e89a197583437a096046a4306557e190b55bf63" ]; then
-              gh release delete v0.1.1 --yes --cleanup-tag
-            fi
           fi
